@@ -1,0 +1,15 @@
+#!/bin/sh
+
+( cd channelSimpleOverlapLaplace ; ./Allclean )
+( cd channelSimpleOverlapPotentialScalarTransport ; ./Allclean )
+( cd channelSimpleOverlapIcoOversetFoam ; ./Allclean )
+
+( cd cylinderInSquareLaplace ; ./Allclean )
+
+( cd cylinderInChannelPotentialScalarTransport ; ./Allclean )
+( cd cylinderInChannelIcoOversetFoam ; ./Allclean )
+
+( cd backStepLaminarBodyFitted ; ./Allclean )
+#( cd backStepOversetLaminar ;  ./Allclean )
+
+#( cd cylBumpinterOversetFoam ; ./Allclean )

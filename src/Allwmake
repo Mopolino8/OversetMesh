@@ -1,0 +1,11 @@
+#!/bin/sh
+set -x
+
+wmake oversetRegionID
+
+wmake libso oversetMesh
+
+wmake laplacianOversetFoam
+wmake potentialOversetFoam
+wmake scalarTransportOversetFoam
+wmake icoOversetFoam

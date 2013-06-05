@@ -1,0 +1,29 @@
+oversetRegion/oversetRegion.C
+
+oversetFringe/oversetFringe/oversetFringe.C
+oversetFringe/oversetFringe/newOversetFringe.C
+oversetFringe/manualFringe/manualFringe.C
+oversetFringe/faceCellsFringe/faceCellsFringe.C
+/* oversetFringe/overlapFringe/overlapFringe.C */
+
+oversetInterpolation/oversetInterpolation/oversetInterpolation.C
+oversetInterpolation/oversetInterpolation/newOversetInterpolation.C
+oversetInterpolation/injectionInterpolation/injectionInterpolation.C
+
+oversetMesh/oversetMesh.C
+oversetMesh/oversetMeshAddressing.C
+
+oversetLduInterface/oversetLduInterface.C
+oversetLduInterfaceField/oversetLduInterfaceField.C
+
+oversetPolyPatch/oversetPolyPatch.C
+oversetPointPatch/oversetPointPatch.C
+
+oversetFvPatch/oversetFvPatch.C
+
+oversetFvPatchField/oversetFvPatchFields.C
+oversetFvsPatchField/oversetFvsPatchFields.C
+
+/* oversetAdjustPhi/oversetAdjustPhi.C */
+
+LIB = $(FOAM_USER_LIBBIN)/liboversetMesh

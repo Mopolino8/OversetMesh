@@ -1,0 +1,77 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open Source CFD        |
+|  \\    /   O peration     | Version:  1.6-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default steadyState;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+    grad(p)         Gauss linear;
+    grad(U)         Gauss linear;
+}
+
+divSchemes
+{
+    default               none;
+    div(phi,UStar)        Gauss upwind;
+    div(phiPrimal,UStar)  Gauss upwind;
+    div(phi,U)            Gauss upwind;
+    div(phi,k)            Gauss upwind;
+    div(phi,epsilon)      Gauss upwind;
+    div((nuEff*dev(grad(UStar).T()))) Gauss linear;
+    div((nutMod*dev(grad(U).T())))    Gauss linear;
+    div((nuEff*dev(grad(U).T())))     Gauss linear;
+
+    div(phiStar,U)   Gauss upwind;
+    adjDiv(U,UStar)  explicit;
+}
+
+laplacianSchemes
+{
+    default                        none;
+    laplacian(nuEff,U)             Gauss linear corrected;
+    laplacian(nuEff,UStar)         Gauss linear corrected;
+    laplacian(nu,UStar)            Gauss linear corrected;
+    laplacian(nu,U)                Gauss linear corrected;
+    laplacian((1|A(UStar)),pStar)  Gauss linear corrected;
+    laplacian((1|A(U)),p)          Gauss linear corrected;
+    laplacian(nutMod,U)            Gauss linear corrected;
+    laplacian(DepsilonEff,epsilon) Gauss linear corrected;
+    laplacian(DkEff,k)             Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+    interpolate(U)  linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+fluxRequired
+{
+    default         no;
+    pStar;
+    p;
+}
+
+// ************************************************************************* //

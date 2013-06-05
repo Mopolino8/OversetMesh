@@ -1,0 +1,11 @@
+#!/bin/sh
+set -x
+
+wclean oversetRegionID
+
+wclean oversetMesh
+
+wclean laplacianOversetFoam
+wclean potentialOversetFoam
+wclean scalarTransportOversetFoam
+wclean icoOversetFoam
