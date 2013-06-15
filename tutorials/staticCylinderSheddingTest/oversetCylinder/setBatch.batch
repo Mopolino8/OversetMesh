@@ -1,7 +1,7 @@
 cellSet backFringe new cellToCell background
-cellSet backFringe subset sphereToCell (0 0 0) 0.36
+cellSet backFringe subset sphereToCell (0 0 0) 0.018
 cellSet backHole new cellToCell background
-cellSet backHole subset sphereToCell (0 0 0) 0.3
+cellSet backHole subset sphereToCell (0 0 0) 0.016
 cellSet backFringe delete cellToCell backHole
 cellSet empty new labelToCell 0 ()
 

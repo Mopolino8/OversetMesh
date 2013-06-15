@@ -8,7 +8,7 @@
 FoamFile
 {
     version     2.0;
-    format      binary;
+    format      ascii;
     class       polyBoundaryMesh;
     location    "constant/polyMesh";
     object      boundary;
@@ -21,49 +21,49 @@ FoamFile
     {
         type            overset;
         nFaces          0;
-        startFace       5170;
+        startFace       18920;
     }
     in
     {
         type            patch;
-        nFaces          25;
-        startFace       5170;
+        nFaces          60;
+        startFace       18920;
     }
     out
     {
         type            patch;
-        nFaces          25;
-        startFace       5195;
+        nFaces          60;
+        startFace       18980;
     }
     top
     {
         type            wall;
-        nFaces          75;
-        startFace       5220;
+        nFaces          140;
+        startFace       19040;
     }
     bottom
     {
         type            wall;
-        nFaces          75;
-        startFace       5295;
+        nFaces          140;
+        startFace       19180;
     }
     cylinder
     {
         type            wall;
         nFaces          80;
-        startFace       5370;
+        startFace       19320;
     }
     outerCylinder
     {
         type            patch;
         nFaces          80;
-        startFace       5450;
+        startFace       19400;
     }
     frontAndBack
     {
         type            empty;
-        nFaces          5350;
-        startFace       5530;
+        nFaces          19200;
+        startFace       19480;
     }
 )
 

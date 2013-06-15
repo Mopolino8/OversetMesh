@@ -18,10 +18,6 @@ solvers
 {
     p
     {
-//         solver           smoothSolver;
-//         smoother         GaussSeidel;
-//         nSweeps          1;
-
         solver           BiCGStab;
         preconditioner   DILU;
 
