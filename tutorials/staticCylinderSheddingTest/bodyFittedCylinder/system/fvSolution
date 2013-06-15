@@ -18,24 +18,24 @@ FoamFile
 
 solvers
 {
-//     p
-//     {
-//         solver          amgSolver;
-//         cycle           W-cycle;
-//         policy          AAMG;
-//         nPreSweeps      0;
-//         nPostSweeps     2;
-//         groupSize       4;
-//         minCoarseEqns   30;
-//         nMaxLevels      100;
-//         scale           on;
-//         smoother        ILU;
+    p
+    {
+        solver          amgSolver;
+        cycle           W-cycle;
+        policy          AAMG;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        groupSize       4;
+        minCoarseEqns   30;
+        nMaxLevels      100;
+        scale           on;
+        smoother        ILU;
 
-//         minIter         0;
-//         maxIter         500;
-//         tolerance       1e-8;
-//         relTol          0.0;
-//     };
+        minIter         0;
+        maxIter         500;
+        tolerance       1e-8;
+        relTol          0.0;
+    }
 
     p
     {
@@ -58,7 +58,7 @@ solvers
         maxIter           100;
         tolerance         1e-6;
         relTol            0.0;
-    };
+    }
 
     pFinal
     {
@@ -81,7 +81,7 @@ solvers
         maxIter           100;
         tolerance         1e-6;
         relTol            0.0;
-    };
+    }
 
     U
     {
@@ -92,12 +92,12 @@ solvers
         relTol           0;
         minIter          0;
         maxIter          200;
-    };
+    }
 }
 
 PISO
 {
-    nCorrectors     3;
+    nCorrectors     4;
     nNonOrthogonalCorrectors 0;
     pRefCell        0;
     pRefValue       0;
@@ -107,7 +107,7 @@ PISO
 // Potential flow solution
 SIMPLE
 {
-    nNonOrthogonalCorrectors 4;
+    nNonOrthogonalCorrectors 1;
 }
 
 // ************************************************************************* //

@@ -30,26 +30,17 @@ gradSchemes
 divSchemes
 {
     default         Gauss linear;
-//     div(phi,U)      Gauss upwind;
     div(phi,U)      Gauss GammaV 0.5;
 }
 
 laplacianSchemes
 {
-    default         none;
-    laplacian(nu,U) Gauss linear corrected;
-    laplacian((1|A(U)),p) Gauss linear corrected;
-
-    // Potential flow solution
-    laplacian(1,p) Gauss linear corrected;
-
-    laplacian(rAU,p) Gauss linear corrected;
+    default         Gauss linear corrected;
 }
 
 interpolationSchemes
 {
     default         linear;
-    interpolate(HbyA) linear;
 }
 
 snGradSchemes

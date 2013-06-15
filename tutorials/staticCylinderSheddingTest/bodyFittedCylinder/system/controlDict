@@ -24,16 +24,12 @@ startTime       0;
 
 stopAt          endTime;
 
-// endTime         0.5;
-endTime         10;
+endTime         3;
 
 deltaT          5.0e-04;
 
-// writeControl    runTime;
-writeControl    adjustableRunTime;
-
-writeInterval   0.01;
-// writeInterval   0.1;
+writeControl    runTime;
+writeInterval   0.1;
 
 purgeWrite      0;
 
@@ -49,9 +45,47 @@ timePrecision   6;
 
 runTimeModifiable yes;
 
-adjustTimeStep  yes;
+adjustTimeStep  on;
 
 maxCo           0.4;
+
+
+functions
+(
+    forces
+    {
+        type                forces;
+        functionObjectLibs  ( "libforces.so" );
+        outputControl       timeStep;
+        outputInterval      1;
+        patches             ( cylinder );
+        pName               p;
+        UName               U;
+        rhoName             rhoInf;
+        log                 true;
+        rhoInf              1;
+        CofR                (0 0 0);
+    }
+
+    probes
+    {
+        type            probes;
+        functionObjectLibs ("libsampling.so");
+        enabled         true;
+        outputControl   timeStep;
+        outputInterval  1;
+        probeLocations
+        (
+            ( 0.012 0 0 )
+            ( 0.05 0 0 )
+        );
+
+        fields
+        (
+            p
+        );
+    }
+);
 
 
 // ************************************************************************* //

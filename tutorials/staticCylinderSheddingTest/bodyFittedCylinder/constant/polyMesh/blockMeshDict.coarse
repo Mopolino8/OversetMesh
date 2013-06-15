@@ -98,21 +98,21 @@ edges
 
 blocks
 (
-    hex (0 1 6 5 24 25 30 29) (20 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (1 2 7 6 25 26 31 30) (20 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (2 3 8 7 26 27 32 31) (40 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (3 4 9 8 27 28 33 32) (60 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (5 6 11 10 29 30 35 34) (20 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (7 8 13 12 31 32 37 36) (40 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (8 9 14 13 32 33 38 37) (60 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (10 11 16 15 34 35 40 39) (20 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (11 12 17 16 35 36 41 40) (20 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (12 13 18 17 36 37 42 41) (40 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (13 14 19 18 37 38 43 42) (60 20 1) simpleGrading (1.0 1.0 1.0)
-    hex (6 7 21 20 30 31 45 44) (20 15 1) simpleGrading (1.0 1.0 1.0)
-    hex (7 12 23 21 31 36 47 45) (20 15 1) simpleGrading (1.0 1.0 1.0)
-    hex (12 11 22 23 36 35 46 47) (20 15 1) simpleGrading (1.0 1.0 1.0)
-    hex (11 6 20 22 35 30 44 46) (20 15 1) simpleGrading (1.0 1.0 1.0)
+    hex (0 1 6 5 24 25 30 29) (10 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (1 2 7 6 25 26 31 30) (10 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (2 3 8 7 26 27 32 31) (20 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (3 4 9 8 27 28 33 32) (30 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (5 6 11 10 29 30 35 34) (10 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (7 8 13 12 31 32 37 36) (20 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (8 9 14 13 32 33 38 37) (30 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (10 11 16 15 34 35 40 39) (10 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (11 12 17 16 35 36 41 40) (10 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (12 13 18 17 36 37 42 41) (20 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (13 14 19 18 37 38 43 42) (30 10 1) simpleGrading (1.0 1.0 1.0)
+    hex (6 7 21 20 30 31 45 44) (10 7 1) simpleGrading (1.0 1.0 1.0)
+    hex (7 12 23 21 31 36 47 45) (10 7 1) simpleGrading (1.0 1.0 1.0)
+    hex (12 11 22 23 36 35 46 47) (10 7 1) simpleGrading (1.0 1.0 1.0)
+    hex (11 6 20 22 35 30 44 46) (10 7 1) simpleGrading (1.0 1.0 1.0)
 );
 
 patches
