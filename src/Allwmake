@@ -9,3 +9,4 @@ wmake laplacianOversetFoam
 wmake potentialOversetFoam
 wmake scalarTransportOversetFoam
 wmake icoOversetFoam
+wmake simpleOversetFoam

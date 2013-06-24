@@ -29,12 +29,12 @@ Description
     Adjust overset mesh fringe fluxes to obey continuity
 
 SourceFiles
-    oversetMeshAdjustPhi.C
+    oversetAdjustPhi.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef oversetMeshAdjustPhi_H
-#define oversetMeshAdjustPhi_H
+#ifndef oversetAdjustPhi_H
+#define oversetAdjustPhi_H
 
 #include "volFieldsFwd.H"
 #include "surfaceFieldsFwd.H"
@@ -45,7 +45,7 @@ namespace Foam
 {
 
 //- Adjust the fluxes on overset mesh fringe to obey continuity.
-void oversetMeshAdjustPhi
+void oversetAdjustPhi
 (
     surfaceScalarField& phi,
     volVectorField& U

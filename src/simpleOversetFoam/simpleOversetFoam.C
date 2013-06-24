@@ -23,10 +23,10 @@ License
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Application
-    icoOversetFoam
+    simpleOversetFoam
 
 Description
-    Transient solver for incompressible, laminar flow of Newtonian fluids
+    Steady-state solver for incompressible, turbulent flow
     with overset mesh support.
 
 Author
@@ -35,6 +35,9 @@ Author
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
+#include "singlePhaseTransportModel.H"
+#include "RASModel.H"
+
 #include "oversetMesh.H"
 #include "oversetAdjustPhi.H"
 
@@ -57,61 +60,26 @@ int main(int argc, char *argv[])
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
-#       include "readPISOControls.H"
-#       include "CourantNo.H"
+#       include "readSIMPLEControls.H"
+#       include "initConvergenceCheck.H"
 
-        fvVectorMatrix UEqn
-        (
-            fvm::ddt(U)
-          + fvm::div(phi, U)
-          - fvm::laplacian(nu, U)
-        );
+        p.storePrevIter();
 
-        solve(UEqn == -fvc::grad(p));
-
-        // --- PISO loop
-
-        for (int corr = 0; corr < nCorr; corr++)
+        // Pressure-velocity SIMPLE corrector
         {
-            volScalarField rUA = 1.0/UEqn.A();
-
-            U = rUA*UEqn.H();
-            // Overset update
-            U.correctBoundaryConditions();
-
-            phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
-
-            // Adjust immersed boundary fluxes
-            oversetAdjustPhi(phi, U);
-            adjustPhi(phi, U, p);
-
-            for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
-            {
-                fvScalarMatrix pEqn
-                (
-                    fvm::laplacian(rUA, p) == fvc::div(phi)
-                );
-
-                pEqn.setReference(pRefCell, pRefValue);
-                pEqn.solve();
-
-                if (nonOrth == nNonOrthCorr)
-                {
-                    phi -= pEqn.flux();
-                }
-            }
-
-#           include "continuityErrs.H"
-
-            U -= rUA*fvc::grad(p);
-            U.correctBoundaryConditions();
+#           include "UEqn.H"
+#           include "pEqn.H"
         }
+
+        turbulence->correct();
 
         runTime.write();
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
+
+#       include "convergenceCheck.H"
     }
 
     Info<< "End\n" << endl;
