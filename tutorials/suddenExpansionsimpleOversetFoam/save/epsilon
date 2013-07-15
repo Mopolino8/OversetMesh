@@ -24,11 +24,10 @@ boundaryField
     oversetFaces
     {
         type            overset;
-        value           uniform 0.0002;
-        coupledFringe yes;
-
-        setHoleCellValue  yes;
-        holeCellValue     1e-10;
+        coupledFringe   yes;
+        setHoleCellValue yes;
+        holeCellValue   1e-10;
+        value           nonuniform 0();
     }
     inlet
     {
@@ -42,24 +41,29 @@ boundaryField
     inletWalls
     {
         type            epsilonWallFunction;
+        refValue        uniform 0;
+        value           uniform 0.0002;
         Cmu             0.09;
         kappa           0.41;
         E               9.8;
+    }
+    outlet
+    {
+        type            epsilonWallFunction;
+        refValue        uniform 0;
         value           uniform 0.0002;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
     }
     outletWalls
     {
         type            epsilonWallFunction;
+        refValue        uniform 0;
+        value           uniform 0.0002;
         Cmu             0.09;
         kappa           0.41;
         E               9.8;
-        value           uniform 0.0002;
-    }
-    outlet
-    {
-        type            inletOutlet;
-        inletValue      uniform 0.0002;
-        value           uniform 0.0002;
     }
     frontAndBack
     {

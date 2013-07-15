@@ -21,43 +21,43 @@ FoamFile
     {
         type            overset;
         nFaces          0;
-        startFace       3290;
+        startFace       7430;
     }
     inlet
     {
         type            patch;
-        nFaces          10;
-        startFace       3290;
+        nFaces          20;
+        startFace       7430;
     }
     leftOut
     {
         type            patch;
-        nFaces          10;
-        startFace       3300;
+        nFaces          20;
+        startFace       7450;
     }
     inletWalls
     {
         type            wall;
-        nFaces          40;
-        startFace       3310;
+        nFaces          60;
+        startFace       7470;
     }
     outlet
     {
         type            wall;
-        nFaces          30;
-        startFace       3350;
+        nFaces          40;
+        startFace       7530;
     }
     outletWalls
     {
         type            wall;
-        nFaces          130;
-        startFace       3380;
+        nFaces          200;
+        startFace       7570;
     }
     frontAndBack
     {
         type            empty;
-        nFaces          3400;
-        startFace       3510;
+        nFaces          7600;
+        startFace       7770;
     }
 )
 

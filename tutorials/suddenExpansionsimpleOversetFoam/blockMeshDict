@@ -44,10 +44,10 @@ vertices
 blocks
 (
     // Inlet
-    hex (0 1 3 2 4 5 7 6) inlet (20 10 1) simpleGrading (1 1 1)
+    hex (0 1 3 2 4 5 7 6) inlet (30 20 1) simpleGrading (1 1 1)
 
     // Outlet
-    hex (8 9 11 10 12 13 15 14) outlet (50 30 1) simpleGrading (1 1 1)
+    hex (8 9 11 10 12 13 15 14) outlet (80 40 1) simpleGrading (1 1 1)
 );
 
 edges

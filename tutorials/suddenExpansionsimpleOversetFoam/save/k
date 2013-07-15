@@ -17,23 +17,22 @@ FoamFile
 
 dimensions      [0 2 -2 0 0 0 0];
 
-internalField   uniform 1.5e-4;
+internalField   uniform 0.00015;
 
 boundaryField
 {
     oversetFaces
     {
-        type          overset;
-        value         uniform 1.5e-4;
-        coupledFringe yes;
-
-        setHoleCellValue  yes;
-        holeCellValue     1e-10;
+        type            overset;
+        coupledFringe   yes;
+        setHoleCellValue yes;
+        holeCellValue   1e-10;
+        value           nonuniform 0();
     }
     inlet
     {
         type            fixedValue;
-        value           uniform 1.5e-4;
+        value           uniform 0.00015;
     }
     leftOut
     {
@@ -42,18 +41,17 @@ boundaryField
     inletWalls
     {
         type            kqRWallFunction;
-        value           uniform 1.5e-4;
+        value           uniform 0.00015;
+    }
+    outlet
+    {
+        type            kqRWallFunction;
+        value           uniform 0.00015;
     }
     outletWalls
     {
         type            kqRWallFunction;
-        value           uniform 1.5e-4;
-    }
-    outlet
-    {
-        type            inletOutlet;
-        inletValue      uniform 1.5e-4;
-        value           uniform 1.5e-4;
+        value           uniform 0.00015;
     }
     frontAndBack
     {

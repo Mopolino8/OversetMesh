@@ -3,7 +3,7 @@
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # Get application name
-application="icoOversetFoam"
+application="simpleOversetFoam"
 
 \cp -f blockMeshDict constant/polyMesh/blockMeshDict
 runApplication blockMesh
@@ -11,4 +11,5 @@ runApplication blockMesh
 runApplication setSet -batch setBatch.batch
 \rm -f constant/polyMesh/sets/*_old constant/polyMesh/sets/*_old.gz
 
+runApplication potentialOversetFoam
 runApplication $application

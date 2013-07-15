@@ -50,17 +50,31 @@ solvers
     }
     k
     {
-        solver           PBiCG;
-        preconditioner   DILU;
+        solver           smoothSolver;
+        smoother         GaussSeidel;
+        nSweeps          1;
+
+//         solver           BiCGStab;
+//         preconditioner   DILU;
+
+        minIter          1;
+        maxIter          200;
         tolerance        1e-07;
-        relTol           0;
+        relTol           0.01;
     }
     epsilon
     {
-        solver           PBiCG;
-        preconditioner   DILU;
+        solver           smoothSolver;
+        smoother         GaussSeidel;
+        nSweeps          10;
+
+//         solver           BiCGStab;
+//         preconditioner   DILU;
+
+        minIter          1;
+        maxIter          200;
         tolerance        1e-07;
-        relTol           0;
+        relTol           0.01;
     }
 }
 
@@ -77,11 +91,9 @@ SIMPLE
 relaxationFactors
 {
     p               0.3;
-    U               0.7;
+    U               0.5;
     k               0.7;
     epsilon         0.7;
-    R               0.7;
-    nuTilda         0.7;
 }
 
 
