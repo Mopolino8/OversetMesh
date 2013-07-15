@@ -26,7 +26,7 @@ Class
     Foam::oversetPointPatch
 
 Description
-    Immersed boundary point patch.
+    Overset boundary point patch.
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.

@@ -10,3 +10,4 @@ wclean potentialOversetFoam
 wclean scalarTransportOversetFoam
 wclean icoOversetFoam
 wclean simpleOversetFoam
+wclean interOversetFoam

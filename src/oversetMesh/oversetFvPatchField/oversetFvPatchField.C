@@ -618,7 +618,7 @@ tmp<Field<Type> > oversetFvPatchField<Type>::patchNeighbourField() const
 template<class Type>
 void oversetFvPatchField<Type>::updateCoeffs()
 {
-    // Fix the value in hole cells
+    // Fix the value in hole cells.  Probably unnecessary.  HJ, 25/Jun/2013
     if (setHoleCellValue_)
     {
         // Get non-const access to internal field
@@ -662,7 +662,15 @@ void oversetFvPatchField<Type>::evaluate
 (
     const Pstream::commsTypes commsType
 )
-{}
+{
+    if (setHoleCellValue_)
+    {
+        // Get non-constant access to internal field
+        Field<Type>& psi = const_cast<Field<Type>&>(this->internalField());
+
+        this->setHoleValues(psi);
+    }
+}
 
 
 template<class Type>
@@ -686,6 +694,7 @@ void oversetFvPatchField<Type>::manipulateMatrix
         holeCells.size(),
         holeCellValue_
     );
+
     eqn.setValues(holeCells, holeCellsPsi);
 }
 
@@ -799,7 +808,7 @@ void oversetFvPatchField<Type>::initInterfaceMatrixUpdate
             "    const direction cmpt,\n"
             "    const Pstream::commsTypes commsType\n"
             ") const"
-        )   << "Attempting implicit update for fie;d "
+        )   << "Attempting implicit update for field "
             << this->dimensionedInternalField().name()
             << " on patch " << this->patch().name()
             << " with coupledFringe switched off"

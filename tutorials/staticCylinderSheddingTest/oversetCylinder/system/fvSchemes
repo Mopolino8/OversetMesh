@@ -27,13 +27,14 @@ gradSchemes
 divSchemes
 {
     default         none;
-    div(phi,U)      Gauss GammaV 0.5;
+//     div(phi,U)      Gauss GammaV 0.5;
+    div(phi,U)      Gauss upwind;
 }
 
 laplacianSchemes
 {
 //     default         Gauss linear corrected;
-    default         Gauss linear uncorrected;
+    default         Gauss linear corrected;
 }
 
 interpolationSchemes

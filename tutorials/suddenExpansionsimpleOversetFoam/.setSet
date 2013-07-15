@@ -1,0 +1,9 @@
+cellSet outletFringe new boxToCell (0 -0.02 -0.001) (0.008 0.02 0.001)
+cellSet outletFringe new boxToCell (0 -0.02 -0.001) (0.006 0.02 0.001)
+cellSet outletFringe new cellToCell     (10  4   0.1)
+cellSet outletFringe new cellToCell outlet
+cellSet outletFringe new cellToCell outlet
+cellSet outletFringe subset boxToCell (0 -0.02 -0.001) (0.006 0.02 0.001)
+quit
+cellSet empty new labelToCell 0 ()
+quit

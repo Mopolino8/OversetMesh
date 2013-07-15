@@ -6,4 +6,5 @@
 application="icoFoam"
 
 runApplication blockMesh
+runApplication potentialFoam -writep
 runApplication $application

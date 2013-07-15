@@ -10,3 +10,4 @@ wmake potentialOversetFoam
 wmake scalarTransportOversetFoam
 wmake icoOversetFoam
 wmake simpleOversetFoam
+wmake interOversetFoam

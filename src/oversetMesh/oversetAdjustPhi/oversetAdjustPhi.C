@@ -47,8 +47,6 @@ void Foam::oversetAdjustPhi
         fvc::makeRelative(phi, U);
     }
 
-    Info<< "Overset adjust phi" << endl;
-
     // Get overset mesh
     const oversetMesh& om = oversetMesh::New(mesh);
 
@@ -125,15 +123,15 @@ void Foam::oversetAdjustPhi
         }
     }
 
-    Info<< "Region fringe balance: in = " << regionFringeIn
-        << " out = " << regionFringeOut
-        << " balance = " << regionFringeOut - regionFringeIn
-        << endl;
+//     Info<< "Region fringe balance: in = " << regionFringeIn
+//         << " out = " << regionFringeOut
+//         << " balance = " << regionFringeOut - regionFringeIn
+//         << endl;
 
     // Calculate region flux correction
     scalarField regionFluxScale = regionFringeIn/(regionFringeOut + SMALL);
 
-    Info<< "regionFluxScale: " << regionFluxScale << endl;
+//     Info<< "regionFluxScale: " << regionFluxScale << endl;
 
     // Go through all fringe faces on each region and balance the fluxes
     forAll (fringeFaces, ffI)

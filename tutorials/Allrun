@@ -2,14 +2,19 @@
 
 ( cd channelSimpleOverlapLaplace ; ./Allrun )
 ( cd channelSimpleOverlapPotentialScalarTransport ; ./Allrun )
-( cd channelSimpleOverlapIcoOversetFoam ; ./Allrun )
+( cd channelSimpleOverlapicoOversetFoam ; ./Allrun )
 
 ( cd cylinderInSquareLaplace ; ./Allrun )
 
 ( cd cylinderInChannelPotentialScalarTransport ; ./Allrun )
-( cd cylinderInChannelIcoOversetFoam ; ./Allrun )
+( cd cylinderInChannelicoOversetFoam ; ./Allrun )
+
+
+( cd cylBumpinterOversetFoam ; ./Allrun )
+
+( cd staticCylinderSheddingTest ; ./Allrun )
 
 ( cd backStepLaminarBodyFitted ; ./Allrun )
 #( cd backStepOversetLaminar ;  ./Allrun )
 
-#( cd cylBumpinterOversetFoam ; ./Allrun )
+( cd suddenExpansionsimpleOversetFoam ; ./Allrun )

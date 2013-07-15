@@ -23,30 +23,37 @@ License
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Global
-    immersedBoundaryContinuityErrs
+    CourantNo
 
 Description
-    Calculates and prints the continuity errors with
-    immersed boundary correction.
+    Calculates and outputs the mean and maximum Courant Numbers with overset
+    mesh correction.
 
 \*---------------------------------------------------------------------------*/
 
+scalar CoNum = 0.0;
+scalar meanCoNum = 0.0;
+scalar velMag = 0.0;
+
+if (mesh.nInternalFaces())
 {
-    volScalarField contErr = fvc::div(faceIbMask*phi);
-//     volScalarField contErr = cellIbMask*fvc::div(phi);
+    surfaceScalarField magPhi = mag(faceOversetMask*phi);
 
-    sumLocalContErr = runTime.deltaT().value()*
-        mag(contErr)().weightedAverage(mesh.V()).value();
+    surfaceScalarField SfUfbyDelta =
+        mesh.surfaceInterpolation::deltaCoeffs()*magPhi;
 
-    globalContErr = runTime.deltaT().value()*
-        contErr.weightedAverage(mesh.V()).value();
+    CoNum = max(SfUfbyDelta/mesh.magSf())
+        .value()*runTime.deltaT().value();
 
-    cumulativeContErr += globalContErr;
+    meanCoNum = (sum(SfUfbyDelta)/sum(mesh.magSf()))
+        .value()*runTime.deltaT().value();
 
-    Info<< "IB time step continuity errors : sum local = " << sumLocalContErr
-        << ", global = " << globalContErr
-        << ", cumulative = " << cumulativeContErr
-        << endl;
+    velMag = max(magPhi/mesh.magSf()).value();
 }
+
+Info<< "Courant Number mean: " << meanCoNum
+    << " max: " << CoNum
+    << " velocity magnitude: " << velMag
+    << endl;
 
 // ************************************************************************* //

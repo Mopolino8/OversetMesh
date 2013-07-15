@@ -7,7 +7,7 @@
     UEqn.clear();
     phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
 
-    // Adjust immersed boundary fluxes
+    // Adjust overset fluxes
     oversetAdjustPhi(phi, U);
     adjustPhi(phi, U, p);
 
@@ -38,7 +38,7 @@
         }
     }
 
-#   include "continuityErrs.H"
+#   include "oversetContinuityErrs.H"
 
     // Explicitly relax pressure for momentum corrector
     p.relax();

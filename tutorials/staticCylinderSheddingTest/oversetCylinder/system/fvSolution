@@ -26,7 +26,7 @@ solvers
 
         minIter          1;
         maxIter          1000;
-        tolerance        1e-10;
+        tolerance        1e-7;
         relTol           0;
     }
 

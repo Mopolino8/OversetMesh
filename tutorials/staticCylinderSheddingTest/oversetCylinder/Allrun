@@ -11,4 +11,5 @@ runApplication blockMesh
 runApplication setSet -batch setBatch.batch
 \rm -f constant/polyMesh/sets/*_old constant/polyMesh/sets/*_old.gz
 
+runApplication potentialOversetFoam -writep
 runApplication $application
