@@ -82,7 +82,7 @@ void Foam::oversetMesh::donorToAcceptor
 
     // Get addressing and weights from interpolation
     const labelListList& addr = interpolation().addressing();
-    const scalarListList& weights = interpolation().weights();
+    const FieldField<Field, scalar>& weights = interpolation().weights();
 
     // Check sizes
     if
@@ -109,7 +109,7 @@ void Foam::oversetMesh::donorToAcceptor
     forAll (accF, accI)
     {
         const labelList& nbr = addr[accI];
-        const scalarList& w = weights[accI];
+        const scalarField& w = weights[accI];
             
         accF[accI] = pTraits<Type>::zero;
 

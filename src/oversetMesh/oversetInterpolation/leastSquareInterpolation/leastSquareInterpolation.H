@@ -23,93 +23,76 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Class
-    oversetInterpolation
+    leastSquareInterpolation
 
 Description
-    Virtual base class for overset interpolation selection
+    Least squares overset interpolation algorithm
+
+    Donor cells are collected directly
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.
 
 SourceFiles
-    oversetInterpolation.C
-    newOversetInterpolation.C
+    leastSquareInterpolation.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef oversetInterpolation_H
-#define oversetInterpolation_H
+#ifndef leastSquareInterpolation_H
+#define leastSquareInterpolation_H
 
-#include "IOdictionary.H"
-#include "typeInfo.H"
-#include "labelList.H"
-#include "scalarField.H"
-#include "FieldField.H"
-#include "runTimeSelectionTables.H"
+#include "oversetInterpolation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class oversetMesh;
-
 /*---------------------------------------------------------------------------*\
-                    Class oversetInterpolation Declaration
+                     Class leastSquareInterpolation Declaration
 \*---------------------------------------------------------------------------*/
 
-class oversetInterpolation
+class leastSquareInterpolation
+:
+    public oversetInterpolation
 {
     // Private data
 
-        //- Overset mesh reference
-        const oversetMesh& overset_;
+        // Demand-driven data
+
+            //- Addressing
+            mutable labelListList* addressingPtr_;
+
+            //- Weights
+            mutable FieldField<Field, scalar>* weightsPtr_;
 
 
     // Private Member Functions
 
-        //- Disallow copy construct
-        oversetInterpolation(const oversetInterpolation&);
+        //- Disallow default bitwise copy construct
+        leastSquareInterpolation(const leastSquareInterpolation&);
 
         //- Disallow default bitwise assignment
-        void operator=(const oversetInterpolation&);
+        void operator=(const leastSquareInterpolation&);
+
+
+        //- Calculate addressing
+        void calcAddressing() const;
+
+        //- Clear addressing
+        void clearAddressing() const;
 
 
 public:
 
     //- Runtime type information
-    TypeName("oversetInterpolation");
-
-
-    // Declare run-time constructor selection table
-
-        declareRunTimeSelectionTable
-        (
-            autoPtr,
-            oversetInterpolation,
-            dictionary,
-            (
-                const oversetMesh& overset,
-                const dictionary& dict
-            ),
-            (overset, dict)
-        );
-
-
-    // Selectors
-
-        //- Return a reference to the selected thermal model
-        static autoPtr<oversetInterpolation> New
-        (
-            const oversetMesh& overset,
-            const dictionary& dict
-        );
+    TypeName("leastSquares");
 
 
     // Constructors
 
         //- Construct from dictionary
-        oversetInterpolation
+        leastSquareInterpolation
         (
             const oversetMesh& overset,
             const dictionary& dict
@@ -118,35 +101,23 @@ public:
 
     // Destructor
 
-        virtual ~oversetInterpolation()
-        {}
+        virtual ~leastSquareInterpolation();
 
 
     // Member Functions
 
-        // Access
-
-            //- Return reference to overset mesh
-            const oversetMesh& overset() const
-            {
-                return overset_;
-            }
-
-
-        // Interpolation data
-
             //- Return interpolation donor list
-            virtual const labelList& donors() const = 0;
+            virtual const labelList& donors() const;
 
             //- Return acceptor addressing
-            virtual const labelListList& addressing() const = 0;
+            virtual const labelListList& addressing() const;
 
             //- Return acceptor weights
-            virtual const FieldField<Field, scalar>& weights() const = 0;
+            virtual const FieldField<Field, scalar>& weights() const;
 
 
         //- Update the interpolation
-        virtual void update() = 0;
+        virtual void update();
 };
 
 

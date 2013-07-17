@@ -193,7 +193,7 @@ void Foam::oversetRegion::calcDonorCells() const
 //         scalar greatSpan = sqr(GREAT);
 
         const labelList& curDonors =
-            oversetMesh_.region(donorRegions_[drI]).regionCells();
+            oversetMesh_.region(donorRegions_[drI]).eligibleDonors();
 
         // Search donor region with all unassigned cells
         forAll (a, aI)
@@ -353,6 +353,69 @@ void Foam::oversetRegion::calcHoleCells() const
 }
 
 
+void Foam::oversetRegion::calcEligibleDonorCells() const
+{
+    if (eligibleDonorCellsPtr_)
+    {
+        FatalErrorIn("void oversetRegion::calcEligibleDonorCells() const")
+            << "Hole cells already calculated"
+            << abort(FatalError);
+    }
+
+    const labelList& rc = regionCells();
+
+    // Prepare donor mask for region cells
+    boolList donorMask(mesh().nCells(), false);
+
+    // Mark region cells as eligible
+    forAll (rc, rcI)
+    {
+        donorMask[rc[rcI]] = true;
+    }
+
+    // Remove all hole cells from region
+    const labelList& hc = holes();
+
+    forAll (hc, hcI)
+    {
+        donorMask[hc[hcI]] = false;
+    }
+
+    // Remove all acceptor cells from region
+    const labelList& ac = acceptors();
+
+    forAll (ac, acI)
+    {
+        donorMask[ac[acI]] = false;
+    }
+
+    // Count and collect eligible donors
+    label nEligibleDonors = 0;
+
+    forAll (donorMask, cellI)
+    {
+        if (donorMask[cellI])
+        {
+            nEligibleDonors++;
+        }
+    }
+
+    eligibleDonorCellsPtr_ = new labelList(nEligibleDonors);
+    labelList& ed = *eligibleDonorCellsPtr_;
+
+    // Reset counter and collect cells
+    nEligibleDonors = 0;
+    forAll (donorMask, cellI)
+    {
+        if (donorMask[cellI])
+        {
+            ed[nEligibleDonors] = cellI;
+            nEligibleDonors++;
+        }
+    }
+}
+
+
 void Foam::oversetRegion::calcCellTree() const
 {
     if (cellTreePtr_)
@@ -396,6 +459,7 @@ void Foam::oversetRegion::clearOut()
     deleteDemandDrivenData(acceptorCellsPtr_);
     deleteDemandDrivenData(donorCellsPtr_);
     deleteDemandDrivenData(holeCellsPtr_);
+    deleteDemandDrivenData(eligibleDonorCellsPtr_);
 
     deleteDemandDrivenData(holeTriMeshPtr_);
     deleteDemandDrivenData(triSurfSearchPtr_);
@@ -424,6 +488,7 @@ Foam::oversetRegion::oversetRegion
     acceptorCellsPtr_(NULL),
     donorCellsPtr_(NULL),
     holeCellsPtr_(NULL),
+    eligibleDonorCellsPtr_(NULL),
 
     holeTriMeshPtr_(NULL),
     triSurfSearchPtr_(NULL),
@@ -500,6 +565,17 @@ const Foam::labelList& Foam::oversetRegion::holes() const
     }
 
     return *holeCellsPtr_;
+}
+
+
+const Foam::labelList& Foam::oversetRegion::eligibleDonors() const
+{
+    if (!eligibleDonorCellsPtr_)
+    {
+        calcEligibleDonorCells();
+    }
+
+    return *eligibleDonorCellsPtr_;
 }
 
 

@@ -97,6 +97,10 @@ class oversetRegion
         //- Hole cell labels
         mutable labelList* holeCellsPtr_;
 
+        //- Eligible donor cells from current region
+        //  Eligible donors are region cells that are not holes or acceptors
+        mutable labelList* eligibleDonorCellsPtr_;
+
 
         // Search tools
 
@@ -133,6 +137,9 @@ class oversetRegion
 
         // Calculate hole cells
         void calcHoleCells() const;
+
+        // Calculate eligible donor cells
+        void calcEligibleDonorCells() const;
 
         // Calculate cell octree
         void calcCellTree() const;
@@ -197,6 +204,9 @@ public:
 
             //- Return hole cell list
             const labelList& holes() const;
+
+            //- Return eligible donor cell list
+            const labelList& eligibleDonors() const;
 
 
         // Search functionality

@@ -24,7 +24,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "injectionInterpolation.H"
+#include "leastSquareInterpolation.H"
 #include "oversetInterpolation.H"
 #include "oversetMesh.H"
 #include "addToRunTimeSelectionTable.H"
@@ -33,52 +33,110 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(injectionInterpolation, 0);
+    defineTypeNameAndDebug(leastSquareInterpolation, 0);
     addToRunTimeSelectionTable
     (
         oversetInterpolation,
-        injectionInterpolation,
+        leastSquareInterpolation,
         dictionary
     );
 }
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::injectionInterpolation::calcAddressing() const
+void Foam::leastSquareInterpolation::calcAddressing() const
 {
     if (addressingPtr_ || weightsPtr_)
     {
         FatalErrorIn
         (
-            "void injectionInterpolation::calcAddressing() const"
+            "void leastSquareInterpolation::calcAddressing() const"
         )   << "Addressing already calculated"
             << abort(FatalError);
     }
 
+    const labelList& ac = overset().acceptorCells();
 
-    addressingPtr_ = new labelListList(overset().acceptorCells().size());
+    addressingPtr_ = new labelListList(ac.size());
     labelListList& addr = *addressingPtr_;
 
-    weightsPtr_ = new FieldField<Field, scalar>
-    (
-        overset().acceptorCells().size()
-    );
+    weightsPtr_ = new FieldField<Field, scalar>(ac.size());
     FieldField<Field, scalar>& w = *weightsPtr_;
 
     const labelList& donors = overset().fringeAddressing();
 
+    // Prepare a mask excluding hole and acceptor cells from the selection
+    const labelList& hc = overset().holeCells();
+
+    boolList donorMask(overset().mesh().nCells(), true);
+
+    forAll (hc, hcI)
+    {
+        donorMask[hc[hcI]] = false;
+    }
+
+    forAll (ac, acI)
+    {
+        donorMask[ac[acI]] = false;
+    }
+
+    // Get cell-cell addressing
+    const labelListList& cc = overset().mesh().cellCells();
+    const vectorField& cellCentres = overset().mesh().cellCentres();
+
     forAll (addr, addrI)
     {
-        // Single donor addressing
-        addr[addrI].setSize(1);
-        addr[addrI][0] = donors[addrI];
+        // Start from donor cells
+        DynamicList<label> curDonors(polyMesh::facesPerCell_);
 
-        w.set(addrI, new scalarField(1, scalar(1)));
+        curDonors.append(donors[addrI]);
+
+        // Consider neighbours
+        const labelList& curNbrs = cc[donors[addrI]];
+
+        forAll (curNbrs, nbrI)
+        {
+            // If neighbour is eligible, use it
+            if (donorMask[curNbrs[nbrI]])
+            {
+                curDonors.append(curNbrs[nbrI]);
+            }
+        }
+        Info<< "Acceptor: " << ac[addrI] << " root donor: " << donors[addrI]
+            << " donors: " << curDonors << endl;
+//         if (curDonors.size() > 1)
+//         {
+//             addr[addrI].transfer(curDonors.shrink());
+//             const labelList& curAddr = addr[addrI];
+
+//             // Calculate weights
+//             w.set(addrI, new scalarField(curAddr.size(), 0));
+//             scalarField& curW = w[addrI];
+
+//             const vector& acCentre = cellCentres[ac[addrI]];
+
+//             forAll (curAddr, caI)
+//             {
+//                 curW[caI] = 1/(mag(acCentre - cellCentres[curAddr[caI]]) + SMALL);
+//             }
+
+//             // Renormalise weights
+//             curW /= gSum(curW);
+//             Info<< "curW = " << sum(curW) << endl;
+//         }
+//         else
+        {
+            // Single donor addressing
+            addr[addrI].setSize(1);
+            addr[addrI][0] = donors[addrI];
+
+            w.set(addrI, new scalarField(1, scalar(1)));
+        }
     }
 }
 
 
-void Foam::injectionInterpolation::clearAddressing() const
+void Foam::leastSquareInterpolation::clearAddressing() const
 {
     deleteDemandDrivenData(addressingPtr_);
     deleteDemandDrivenData(weightsPtr_);
@@ -87,7 +145,7 @@ void Foam::injectionInterpolation::clearAddressing() const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::injectionInterpolation::injectionInterpolation
+Foam::leastSquareInterpolation::leastSquareInterpolation
 (
     const oversetMesh& overset,
     const dictionary& dict
@@ -101,7 +159,7 @@ Foam::injectionInterpolation::injectionInterpolation
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::injectionInterpolation::~injectionInterpolation()
+Foam::leastSquareInterpolation::~leastSquareInterpolation()
 {
     clearAddressing();
 }
@@ -109,14 +167,14 @@ Foam::injectionInterpolation::~injectionInterpolation()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::injectionInterpolation::donors() const
+const Foam::labelList& Foam::leastSquareInterpolation::donors() const
 {
     // Compact addressing: single donor for single cell injection
     return overset().donorCells();
 }
 
 
-const Foam::labelListList& Foam::injectionInterpolation::addressing() const
+const Foam::labelListList& Foam::leastSquareInterpolation::addressing() const
 {
     if (!addressingPtr_)
     {
@@ -128,7 +186,7 @@ const Foam::labelListList& Foam::injectionInterpolation::addressing() const
 
 
 const Foam::FieldField<Foam::Field, Foam::scalar>&
-Foam::injectionInterpolation::weights() const
+Foam::leastSquareInterpolation::weights() const
 {
     if (!weightsPtr_)
     {
@@ -139,9 +197,9 @@ Foam::injectionInterpolation::weights() const
 }
 
 
-void Foam::injectionInterpolation::update()
+void Foam::leastSquareInterpolation::update()
 {
-    Info<< "injectionInterpolation::update()" << endl;
+    Info<< "leastSquareInterpolation::update()" << endl;
 }
 
 

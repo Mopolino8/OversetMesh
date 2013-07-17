@@ -64,7 +64,7 @@ class injectionInterpolation
             mutable labelListList* addressingPtr_;
 
             //- Weights
-            mutable scalarListList* weightsPtr_;
+            mutable FieldField<Field, scalar>* weightsPtr_;
 
 
     // Private Member Functions
@@ -113,7 +113,7 @@ public:
             virtual const labelListList& addressing() const;
 
             //- Return acceptor weights
-            virtual const scalarListList& weights() const;
+            virtual const FieldField<Field, scalar>& weights() const;
 
 
         //- Update the interpolation

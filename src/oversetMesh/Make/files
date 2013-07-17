@@ -10,6 +10,7 @@ oversetFringe/compositeFringe/compositeFringe.C
 oversetInterpolation/oversetInterpolation/oversetInterpolation.C
 oversetInterpolation/oversetInterpolation/newOversetInterpolation.C
 oversetInterpolation/injectionInterpolation/injectionInterpolation.C
+oversetInterpolation/leastSquareInterpolation/leastSquareInterpolation.C
 
 oversetMesh/oversetMesh.C
 oversetMesh/oversetMeshAddressing.C
