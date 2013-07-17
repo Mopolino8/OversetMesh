@@ -5,7 +5,5 @@
 # Get application name
 application="icoFoam"
 
-runApplication blockMesh
-
 runApplication potentialFoam -writep
 runApplication $application

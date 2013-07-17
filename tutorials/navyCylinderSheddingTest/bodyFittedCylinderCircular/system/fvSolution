@@ -29,9 +29,14 @@ solvers
 
     U
     {
-        solver           BiCGStab;
-        preconditioner   DILU;
+        solver           smoothSolver;
+        smoother         GaussSeidel;
+        nSweeps          1;
 
+//         solver           BiCGStab;
+//         preconditioner   DILU;
+
+//         minIter          1;
         maxIter          1000;
         tolerance        1e-7;
         relTol           0;

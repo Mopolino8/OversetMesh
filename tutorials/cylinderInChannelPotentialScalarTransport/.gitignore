@@ -13,6 +13,9 @@
 # file-browser settings - anywhere
 .directory
 
+# data files
+*.dat
+
 # CVS recovered versions - anywhere
 .#*
 
@@ -29,6 +32,7 @@ processor*
 !*/polyMesh/blockMeshDict
 cellToRegion*
 log*
+VTK
 
 # packages - anywhere
 

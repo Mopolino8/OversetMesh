@@ -17,7 +17,6 @@ FoamFile
 ddtSchemes
 {
     default     Euler;
-//     default     backward;
 }
 
 gradSchemes
@@ -28,9 +27,7 @@ gradSchemes
 divSchemes
 {
     default         none;
-//     div(phi,U)      Gauss upwind;
-    div(phi,U)      Gauss vanLeer;
-//     div(phi,U)      Gauss GammaV 0.5;
+    div(phi,U)      Gauss upwind;
 //     div(phi,U)   Gauss linearUpwind cellLimited Gauss linear 1.0;  
 }
 

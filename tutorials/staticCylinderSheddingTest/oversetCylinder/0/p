@@ -47,17 +47,17 @@ boundaryField
         gamma           1;
         value           uniform 0;
     }
-    top
-    {
-        type zeroGradient;
-    }
     bottom
     {
-        type zeroGradient;
+        type            zeroGradient;
+    }
+    top
+    {
+        type            zeroGradient;
     }
     cylinder
     {
-        type zeroGradient;
+        type            zeroGradient;
     }
     outerCylinder
     {

@@ -12,6 +12,7 @@
 ( cd cylBumpinterOversetFoam ; ./Allclean )
 
 ( cd staticCylinderSheddingTest ; ./Allclean )
+( cd navyCylinderSheddingTest ; ./Allclean )
 
 ( cd backStepLaminarBodyFitted ; ./Allclean )
 #( cd backStepOversetLaminar ;  ./Allclean )

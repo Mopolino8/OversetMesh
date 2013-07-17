@@ -47,16 +47,30 @@ regions
         index 1;
 
         // Donor regions
-        donorRegions ( 0 2 );
+        donorRegions ( 0 2 );  // HJ REWRITE: order should not matter!!!
+//         donorRegions ( 2 0 );
 
         // Names or patches that determine hole cells
         holePatches ();
 
         fringe
         {
-            type manual;
-            holes       "refineHole";
-            acceptors   "refineFringe";
+            type composite;
+
+            baseFringes
+            (
+                inner
+                {
+                    type manual;
+                    holes       "refineHole";
+                    acceptors   "refineFringe";
+                }
+                outer
+                {
+                    type faceCells;
+                    patches ( refine );
+                }
+            );
         }
     }
 
