@@ -11,3 +11,5 @@ wclean scalarTransportOversetFoam
 wclean icoOversetFoam
 wclean simpleOversetFoam
 wclean interOversetFoam
+
+wclean icoDyMOversetFoam

@@ -11,3 +11,5 @@ wmake scalarTransportOversetFoam
 wmake icoOversetFoam
 wmake simpleOversetFoam
 wmake interOversetFoam
+
+wmake icoDyMOversetFoam
