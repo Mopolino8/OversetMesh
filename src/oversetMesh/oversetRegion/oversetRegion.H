@@ -175,6 +175,12 @@ public:
                 return mesh_;
             }
 
+            //- Return overset mesh reference
+            const oversetMesh& overset() const
+            {
+                return oversetMesh_;
+            }
+
             //- Return region index as given by regionSplit
             label index() const
             {

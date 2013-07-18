@@ -202,7 +202,7 @@ void Foam::oversetRegion::calcDonorCells() const
             {
                 const vector& curCentre = cc[a[aI]];
 
-                // n-squared search - testing
+                // N-squared search - testing
 
                 scalar minDistance = GREAT;
                 label dc = -1;
@@ -312,7 +312,7 @@ void Foam::oversetRegion::calcHoleCells() const
             continue;
         }
 
-     // Get reference to hole search
+        // Get reference to hole search
         const triSurfaceSearch& holeSearch = otherRegion.holeTriSurfSearch();
 
         boolList regionInside = holeSearch.calcInside(localC);
