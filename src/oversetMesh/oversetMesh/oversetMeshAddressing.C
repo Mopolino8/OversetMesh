@@ -898,7 +898,7 @@ void Foam::oversetMesh::calcFringeAddressing() const
 }
 
 
-void Foam::oversetMesh::clearOut()
+void Foam::oversetMesh::clearOut() const
 {
     deleteDemandDrivenData(splitPtr_);
     deleteDemandDrivenData(acceptorCellsPtr_);

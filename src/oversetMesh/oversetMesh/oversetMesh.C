@@ -184,6 +184,9 @@ bool Foam::oversetMesh::movePoints() const
 {
     // Perform appropriate updates on search and fringe
     // HJ, 3/Apr/2013
+    Info<< "Overset mesh motion update" << endl;
+
+//     clearOut();
 
     return false;
 }
@@ -193,6 +196,9 @@ bool Foam::oversetMesh::updateMesh(const mapPolyMesh&) const
 {
     // Perform appropriate updates on search and fringe
     // HJ, 3/Apr/2013
+    Info<< "Overset topo update" << endl;
+
+    clearOut();
 
     return true;
 }

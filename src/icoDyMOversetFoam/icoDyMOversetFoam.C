@@ -64,6 +64,8 @@ int main(int argc, char *argv[])
         bool meshChanged = mesh.update();
         reduce(meshChanged, orOp<bool>());
 
+#       include "dynamicOversetMasks.H"
+
         // Make the fluxes relative to the mesh motion
         fvc::makeRelative(phi, U);
 

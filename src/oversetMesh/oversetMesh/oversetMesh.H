@@ -189,7 +189,7 @@ private:
         // Storage management
 
             //- Clear all demand-driven data
-            void clearOut();
+            void clearOut() const;
 
 
 public:
