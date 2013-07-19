@@ -4,6 +4,7 @@ set -x
 wclean oversetRegionID
 
 wclean oversetMesh
+wclean oversetDynamicFvMesh
 
 wclean laplacianOversetFoam
 wclean potentialOversetFoam

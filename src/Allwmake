@@ -4,6 +4,7 @@ set -x
 wmake oversetRegionID
 
 wmake libso oversetMesh
+wmake libso oversetDynamicFvMesh
 
 wmake laplacianOversetFoam
 wmake potentialOversetFoam
