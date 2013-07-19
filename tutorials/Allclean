@@ -19,3 +19,4 @@
 
 ( cd suddenExpansionsimpleOversetFoam ; ./Allclean )
 
+( cd movingCylinderInChannelicoDyMOversetFoam ; ./Allclean )
