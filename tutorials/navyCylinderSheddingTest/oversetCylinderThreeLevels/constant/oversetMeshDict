@@ -47,8 +47,7 @@ regions
         index 1;
 
         // Donor regions
-        donorRegions ( 0 2 );  // HJ REWRITE: order should not matter!!!
-//         donorRegions ( 2 0 );
+        donorRegions ( 0 2 );
 
         // Names or patches that determine hole cells
         holePatches ();
