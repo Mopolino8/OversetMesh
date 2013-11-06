@@ -698,6 +698,14 @@ void oversetFvPatchField<Type>::manipulateMatrix
     eqn.setValues(holeCells, holeCellsPsi);
 }
 
+template<class Type>
+void oversetFvPatchField<Type>::transformCoupleField
+(
+    scalarField& f,
+    const direction cmpt
+) const
+{}
+
 
 template<class Type>
 void oversetFvPatchField<Type>::initInterfaceMatrixUpdate

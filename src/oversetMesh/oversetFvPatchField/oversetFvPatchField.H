@@ -263,6 +263,13 @@ public:
 
         // Coupled interface functionality
 
+            //- Transform given patch component field
+            virtual void transformCoupleField
+            (
+                scalarField& f,
+                const direction cmpt
+            ) const;
+
             //- Initialise neighbour matrix update
             virtual void initInterfaceMatrixUpdate
             (
