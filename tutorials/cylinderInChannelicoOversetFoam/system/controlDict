@@ -47,7 +47,7 @@ runTimeModifiable yes;
 
 libs
 (
-    "libOpenFOAM.so"
+    "libfoam.so"
     "libtriSurface.so"
     "libmeshTools.so"
     "libsurfMesh.so"
