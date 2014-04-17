@@ -94,17 +94,30 @@ void oversetFvPatchField<Type>::correctDiag
     const labelList& holeCells = oversetPatch_.overset().holeCells();
     const labelList& acceptorCells = oversetPatch_.overset().acceptorCells();
 
-    const label nBlankedCells = holeCells.size() + acceptorCells.size();
+    label nLiveCells = diag.size() - holeCells.size() - acceptorCells.size();
+
+    reduce(nLiveCells, sumOp<label>());
 
     // Estimate diagonal in live cells
     scalar liveDiag = 1;
 
-    if (holeCells.size() < nBlankedCells)
+    if (nLiveCells > 0)
     {
-        liveDiag = gSumMag(diag)/(diag.size() - nBlankedCells);
+        liveDiag = gSumMag(diag)/nLiveCells;
 
         // Correct for sign
         liveDiag *= sign(gMax(diag));
+    }
+    else
+    {
+        FatalErrorIn
+        (
+            "void oversetFvPatchField<Type>::correctDiag\n"
+            "(\n"
+            "    fvMatrix<Type>& eqn\n"
+            ") const"
+        )   << "No live cells in matrix"
+            << abort(FatalError);
     }
 
     // Fix diagonal if missing in hole cells

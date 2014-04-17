@@ -104,6 +104,9 @@ class oversetRegion
 
         // Search tools
 
+            //- Are hole patches present
+            mutable bool* holePatchesPresentPtr_;
+
             //- Hole patches as a triangular surface
             mutable triSurfaceMesh* holeTriMeshPtr_;
 
@@ -218,10 +221,7 @@ public:
         // Search functionality
 
             //- Are hole patches present?
-            bool holePatches() const
-            {
-                return !holePatchNames_.empty();
-            }
+            bool holePatchesPresent() const;
 
             //- Hole triangular surface
             const triSurfaceMesh& holeTriMesh() const;

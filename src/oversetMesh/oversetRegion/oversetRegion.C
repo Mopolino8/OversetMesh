@@ -65,7 +65,7 @@ void Foam::oversetRegion::calcRegionCells() const
         }
     }
 
-    if (nCells == 0)
+    if (nCells == 0 && !Pstream::parRun())
     {
         FatalErrorIn("void oversetRegion::calcRegionCells() const")
             << "No cells found in region index " << index_
@@ -77,7 +77,7 @@ void Foam::oversetRegion::calcRegionCells() const
 
     // Reset counter and collect cells
     nCells = 0;
-    
+
     forAll (rs, cellI)
     {
         if (rs[cellI] == index_)
@@ -307,7 +307,7 @@ void Foam::oversetRegion::calcHoleCells() const
 
         const oversetRegion& otherRegion = oversetMesh_.region(regionI);
 
-        if (!otherRegion.holePatches())
+        if (!otherRegion.holePatchesPresent())
         {
             continue;
         }
@@ -322,7 +322,7 @@ void Foam::oversetRegion::calcHoleCells() const
         forAll (regionInside, i)
         {
             holeMask[rc[i]] |= regionInside[i];
-        } 
+        }
     }
 
     // Count hole cells
@@ -461,6 +461,7 @@ void Foam::oversetRegion::clearOut()
     deleteDemandDrivenData(holeCellsPtr_);
     deleteDemandDrivenData(eligibleDonorCellsPtr_);
 
+    deleteDemandDrivenData(holePatchesPresentPtr_);
     deleteDemandDrivenData(holeTriMeshPtr_);
     deleteDemandDrivenData(triSurfSearchPtr_);
     deleteDemandDrivenData(cellTreePtr_);
@@ -490,6 +491,7 @@ Foam::oversetRegion::oversetRegion
     holeCellsPtr_(NULL),
     eligibleDonorCellsPtr_(NULL),
 
+    holePatchesPresentPtr_(NULL),
     holeTriMeshPtr_(NULL),
     triSurfSearchPtr_(NULL),
     cellTreePtr_(NULL)
@@ -578,6 +580,48 @@ const Foam::labelList& Foam::oversetRegion::eligibleDonors() const
     return *eligibleDonorCellsPtr_;
 }
 
+bool Foam::oversetRegion::holePatchesPresent() const
+{
+    // Check if holeTriMesh has been created and if not force it
+    if (!holePatchesPresentPtr_)
+    {
+        // Collect all hole patches and make a triangular surface
+        labelHashSet holePatches;
+
+        forAll (holePatchNames_, nameI)
+        {
+            polyPatchID curHolePatch
+            (
+                holePatchNames_[nameI],
+                mesh().boundaryMesh()
+            );
+
+            if (curHolePatch.active())
+            {
+                // If the patch has zero size, do not insert it
+                // Parallel cutting bug.  HJ, 17/Apr/2014
+                if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
+                {
+                    holePatches.insert(curHolePatch.index());
+                }
+            }
+        }
+
+        // Check if any hole patches are detected
+        // Note: requires parallel update
+        if (holePatches.empty())
+        {
+            holePatchesPresentPtr_ = new bool(false);
+        }
+        else
+        {
+            holePatchesPresentPtr_ = new bool(true);
+        }
+    }
+
+    return *holePatchesPresentPtr_;
+}
+
 
 const Foam::triSurfaceMesh& Foam::oversetRegion::holeTriMesh() const
 {
@@ -596,7 +640,12 @@ const Foam::triSurfaceMesh& Foam::oversetRegion::holeTriMesh() const
 
             if (curHolePatch.active())
             {
-                holePatches.insert(curHolePatch.index());
+                // If the patch has zero size, do not insert it
+                // Parallel cutting bug.  HJ, 17/Apr/2014
+                if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
+                {
+                    holePatches.insert(curHolePatch.index());
+                }
             }
             else
             {
@@ -654,8 +703,6 @@ const Foam::triSurfaceMesh& Foam::oversetRegion::holeTriMesh() const
             ),
             invertedTs
         );
-
-        
     }
 
     return *holeTriMeshPtr_;
