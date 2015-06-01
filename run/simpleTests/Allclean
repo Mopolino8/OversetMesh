@@ -1,0 +1,8 @@
+#!/bin/sh
+
+( cd cylinderInSquareLaplace ; ./Allclean )
+( cd cylinderInChannelPotentialScalarTransport ; ./Allclean )
+
+( cd channelBodyFittedLaplace ; ./Allclean )
+( cd channelSimpleOverlapLaplace ; ./Allclean )
+( cd channelSimpleOverlapPotentialScalarTransport ; ./Allclean )

@@ -1,0 +1,101 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open Source CFD        |
+|  \\    /   O peration     | Version:  1.6-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application icoOversetFoam;
+
+// startFrom       startTime;
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         3;
+
+deltaT          5.0e-04;
+
+writeControl    runTime;
+
+writeInterval   0.1;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression compressed;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+libs
+(
+    "libfoam.so"
+    "libtriSurface.so"
+    "libmeshTools.so"
+    "libsurfMesh.so"
+    "libsampling.so"
+    "libdynamicMesh.so"
+    "liboversetMesh.so"
+);
+
+
+
+functions
+(
+    forces
+    {
+        type                forces;
+        functionObjectLibs  ( "libforces.so" );
+        outputControl       timeStep;
+        outputInterval      1;
+        patches             ( cylinder );
+        pName               p;
+        UName               U;
+        rhoName             rhoInf;
+        log                 true;
+        rhoInf              1;
+        CofR                (0 0 0);
+    }
+
+    probes
+    {
+        type            probes;
+        functionObjectLibs ("libsampling.so");
+        enabled         true;
+        outputControl   timeStep;
+        outputInterval  1;
+        probeLocations
+        (
+            ( 0.012 0 0 )
+            ( 0.05 0 0 )
+        );
+
+        fields
+        (
+            p
+        );
+    }
+);
+
+
+// ************************************************************************* //
