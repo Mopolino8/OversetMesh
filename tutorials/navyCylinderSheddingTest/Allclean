@@ -1,5 +1,5 @@
 #!/bin/sh
 
-( cd bodyFittedCylinder ; ./Allclean )
+( cd bodyFittedCylinderCircular ; ./Allclean )
 ( cd oversetCylinderTwoLevels ; ./Allclean )
 ( cd oversetCylinderThreeLevels ; ./Allclean )
