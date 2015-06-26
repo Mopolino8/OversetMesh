@@ -25,7 +25,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "faceCellsFringe.H"
-#include "oversetFringe.H"
+#include "oversetRegion.H"
 #include "polyPatchID.H"
 #include "addToRunTimeSelectionTable.H"
 
@@ -50,7 +50,13 @@ void Foam::faceCellsFringe::calcAddressing() const
             << abort(FatalError);
     }
 
-    boolList acceptorMask(mesh().nCells(), false);
+    // Get reference to region cell zone
+    const cellZone& rcz = region().zone();
+
+    // Make a hash set to collect acceptor points
+    // Note: 2 patches connecting at the corner may create a duplicate,
+    // which is filtered on insertion
+    labelHashSet acceptorSet;
 
     // Find patches and mark cells
     forAll (patchNames_, nameI)
@@ -76,35 +82,17 @@ void Foam::faceCellsFringe::calcAddressing() const
 
         forAll (curFaceCells, fcI)
         {
-            acceptorMask[curFaceCells[fcI]] = true;
+            // Check if cell is in region zone
+            if (rcz.whichCell(curFaceCells[fcI]) > -1)
+            {
+                // Found acceptor
+                acceptorSet.insert(curFaceCells[fcI]);
+            }
         }
     }
 
-    // Count acceptors
-    label nAcceptors = 0;
-
-    forAll (acceptorMask, cellI)
-    {
-        if (acceptorMask[cellI])
-        {
-            nAcceptors++;
-        }
-    }
-
-    acceptorsPtr_ = new labelList(nAcceptors);
-    labelList& a = *acceptorsPtr_;
-
-    // Reset counter
-    nAcceptors = 0;
-
-    forAll (acceptorMask, cellI)
-    {
-        if (acceptorMask[cellI])
-        {
-            a[nAcceptors] = cellI;
-            nAcceptors++;
-        }
-    }
+    // Collect acceptors
+    acceptorsPtr_ = new labelList(acceptorSet.sortedToc());
 
     // Holes currently empty
     holesPtr_ = new labelList();

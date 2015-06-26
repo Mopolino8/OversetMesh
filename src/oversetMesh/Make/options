@@ -1,4 +1,4 @@
-EXE_INC = \
+EXE_INC = -g \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/triSurface/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \

@@ -26,7 +26,16 @@ Class
     oversetFringe
 
 Description
-    Virtual base class for overset fringe selection
+    Virtual base class for overset fringe selection.
+
+    oversetFringe
+    - is owned by a particular oversetRegion
+    - defines the hole cells for its region
+    - defines acceptor cells for its region
+
+    Donor cells are calculated by oversetRegion, using a list of
+    acceptor cells and 
+    
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.

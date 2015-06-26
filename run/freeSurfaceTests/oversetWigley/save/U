@@ -1,0 +1,85 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open source CFD        |
+|  \\    /   O peration     | Version:  1.6-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (1 0 0);
+
+boundaryField
+{
+    oversetFaces
+    {
+        type overset;
+        value uniform (0 0 0);
+        coupledFringe yes;
+
+        setHoleCellValue  yes;
+        holeCellValue (0 0 0);
+    }
+    bottom
+    {
+        type slip;
+    }
+    inlet-air
+    {
+        type fixedValue;
+        value uniform (1 0 0);
+    }
+    inlet-water
+    {
+        type fixedValue;
+        value $internalField;
+    }
+    outlet
+    {
+        type inletOutlet;
+        inletValue uniform (0 0 0);
+        value $internalField;
+    }
+    side
+    {
+        type slip;
+    }
+    top
+    {
+        type slip;
+    }
+    hull
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+    imax_farfield
+    {
+        type slip;
+    }
+    imin_farfield
+    {
+        type slip;
+    }
+    kmin_farfield
+    {
+        type slip;
+    }
+    symmetry
+    {
+        type symmetryPlane;
+    }
+}
+
+
+// ************************************************************************* //

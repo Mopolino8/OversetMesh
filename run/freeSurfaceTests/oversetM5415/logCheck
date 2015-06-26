@@ -1,0 +1,97 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.1                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+Build    : 3.1-ef26ee1688d8
+Exec     : checkMesh
+Date     : Jun 17 2015
+Time     : 09:03:08
+Host     : temple
+PID      : 24707
+CtrlDict : "/home/hjasak/foam/hjasak-3.1/work/OversetMesh/run/freeSurfaceTests/oversetM5415/system/controlDict"
+Case     : /home/hjasak/foam/hjasak-3.1/work/OversetMesh/run/freeSurfaceTests/oversetM5415
+nProcs   : 1
+SigFpe   : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create polyMesh for time = 0
+
+Time = 0
+
+Mesh stats
+    all points:           2328132
+    live points:          2328132
+    all faces:            7886541
+    live faces:           7886541
+    internal faces:       7736401
+    cells:                2775616
+    boundary patches:     16
+    point zones:          0
+    face zones:           0
+    cell zones:           0
+
+Overall number of cells of each type:
+    hexahedra:     1986160
+    prisms:        267058
+    wedges:        0
+    pyramids:      281100
+    tet wedges:    0
+    tetrahedra:    241298
+    polyhedra:     0
+
+Checking topology...
+    Boundary definition OK.
+    Point usage OK.
+    Upper triangular ordering OK.
+    Face vertices OK.
+   *Number of regions: 2
+    The mesh has multiple regions which are not connected by any face.
+  <<Writing region information to "0/cellToRegion"
+
+Checking patch topology for multiply connected surfaces ...
+    Patch               Faces    Points   Area [m^2]  Surface topology                  
+    oversetFaces        0        0        0           ok (empty)                        
+    bilgeKeel           13951    10405    0.0041763   ok (non-closed singly connected)  
+    bottom              5418     5588     12          ok (non-closed singly connected)  
+    deck                5147     4745     0.0824601   ok (non-closed singly connected)  
+    hull                30678    23126    0.119143    ok (non-closed singly connected)  
+    inlet               4816     4972     7.92        ok (non-closed singly connected)  
+    outlet              4816     4972     7.92        ok (non-closed singly connected)  
+    side                14112    14351    23.76       ok (non-closed singly connected)  
+    symmetry            14112    14351    23.76       ok (non-closed singly connected)  
+    top                 5418     5588     12          ok (non-closed singly connected)  
+    x_max               2910     2768     0.1         ok (non-closed singly connected)  
+    x_min               2910     2768     0.1         ok (non-closed singly connected)  
+    y_max               22527    21536    0.631882    ok (non-closed singly connected)  
+    y_min               21825    20383    0.75        ok (non-closed singly connected)  
+    z_max               750      836      0.3         ok (non-closed singly connected)  
+    z_min               750      836      0.3         ok (non-closed singly connected)  
+
+Checking geometry...
+    This is a 3-D mesh
+    Overall domain bounding box (-2.5 -2 -1.96) (3.5 0 2)
+    Mesh (non-empty, non-wedge) directions (1 1 1)
+    Mesh (non-empty) directions (1 1 1)
+    Mesh (non-empty, non-wedge) dimensions 3
+    Boundary openness (1.94012e-16 -9.44987e-16 4.64513e-16) Threshold = 1e-06 OK.
+    Max cell openness = 7.24981e-16 OK.
+    Max aspect ratio = 109.763 OK.
+    Minumum face area = 1.19053e-09. Maximum face area = 0.0713456.  Face area magnitudes OK.
+    Min volume = 1.01912e-13. Max volume = 0.0178364.  Total volume = 47.6645.  Cell volumes OK.
+    Mesh non-orthogonality Max: 85.0651 average: 9.48054 Threshold = 70
+   *Number of severely non-orthogonal faces: 684.
+    Non-orthogonality check OK.
+  Writing 684 non-orthogonal faces to set nonOrthoFaces
+    Face pyramids OK.
+    Max skewness = 3.17452 OK.
+
+Mesh OK.
+
+End
+

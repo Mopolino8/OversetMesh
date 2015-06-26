@@ -1,0 +1,63 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.4                                   |
+|   \\  /    A nd           | Web:      http://www.openfoam.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+    class           dictionary;
+    object          oversetMeshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+interpolation
+{
+    type injection;
+}
+
+regions
+(
+    // Background
+    {
+        index 0;
+
+        // Donor regions
+        donorRegions ( 1 );
+
+        // Names or patches that determine hole cells
+        holePatches ();
+
+        fringe
+        {
+            type        manual;
+            holes       backHole;
+            acceptors   backFringe;
+        }
+
+    }
+
+    // hull
+    {
+        index 1;
+
+        donorRegions ( 0 );
+
+        holePatches  ( hull );
+
+        fringe
+        {
+            type faceCells;
+            patches ( imin_farfield imax_farfield kmin_farfield );
+        }
+    }
+);
+
+
+// ************************************************************************* //

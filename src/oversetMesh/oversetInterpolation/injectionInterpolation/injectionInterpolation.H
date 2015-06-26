@@ -27,8 +27,12 @@ Class
 
 Description
     Injection overset interpolation algorithm
+    For each acceptor, the donor data is extracted from the cell where
+    the donor centroid falls
+    Acceptor value is equal to the donor value, irrespective of the local
+    position
 
-    Donor cells are collected directly
+    Local and remote donor cells are collected directly
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.
@@ -106,8 +110,11 @@ public:
 
     // Member Functions
 
+            //- Return interpolation local donor list
+            virtual const labelList& localDonors() const;
+
             //- Return interpolation donor list
-            virtual const labelList& donors() const;
+            virtual const labelList& remoteDonors() const;
 
             //- Return acceptor addressing
             virtual const labelListList& addressing() const;

@@ -2,9 +2,23 @@
     word alphaScheme("div(phi,alpha)");
     word alpharScheme("div(phirb,alpha)");
 
-    surfaceScalarField phic = mag(phi/mesh.magSf());
-    phic = min(interface.cAlpha()*phic, max(phic));
-    surfaceScalarField phir = faceOversetMask*phic*interface.nHatf();
+    // New formulation of phir: Co condition
+    // Note faceOversetMask.  HJ, 16/Jun/2015
+    surfaceScalarField phir
+    (
+        "phir",
+        faceOversetMask*interface.cAlpha()*interface.nHatf()*
+        min
+        (
+            scalar(0.5)/    // This is ref compression Co number for cAlpha = 1
+            (
+                mesh.surfaceInterpolation::deltaCoeffs()*
+                mesh.time().deltaT()
+            ),
+            mag(phi/mesh.magSf())
+          + dimensionedScalar("small", dimVelocity, 1e-3)
+        )
+    );
 
     fvScalarMatrix alpha1Eqn
     (
@@ -18,6 +32,7 @@
         )
     );
 
+    alpha1Eqn.relax();
     alpha1Eqn.solve();
 
     Info<< "Liquid phase volume fraction = "
@@ -32,6 +47,11 @@
 
     // Update of interface and density
     interface.correct();
+    twoPhaseProperties.correct();
 
-    rho == alpha1*rho1 + (scalar(1) - alpha1)*rho2;
+    // Calculate density using limited alpha1
+    rho = twoPhaseProperties.rho();
+
+    // Parallel update in snGrad.  HJ, 8/Dec/2012
+    rho.correctBoundaryConditions();
 }

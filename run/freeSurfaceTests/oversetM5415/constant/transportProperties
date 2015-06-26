@@ -1,0 +1,81 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.3                                   |
+|   \\  /    A nd           | Web:      http://www.openfoam.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+// FoamX Case Dictionary.
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+
+    root            "/home/egp11";
+    case            "wigley";
+    instance        "constant";
+    local           "";
+
+    class           dictionary;
+    object          transportProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+    transportModel  Newtonian;
+    rho             rho [1 -3 0 0 0 0 0] 1000;
+    // Re = 4.86x10^6 
+    nu              nu [0 2 -1 0 0 0 0] 2.05761317e-7;
+//
+
+phase1
+{
+    transportModel  Newtonian;
+    rho             rho [1 -3 0 0 0 0 0] 1000;
+    nu              nu [0 2 -1 0 0 0 0] 2.05761317e-7;
+//
+    CrossPowerLawCoeffs
+    {
+        nu0             nu0 [0 2 -1 0 0 0 0] 1e-06;
+        nuInf           nuInf [0 2 -1 0 0 0 0] 1e-06;
+        m               m [0 0 1 0 0 0 0] 1;
+        n               n [0 0 0 0 0 0 0] 0;
+    }
+    BirdCarreauCoeffs
+    {
+        nu0             nu0 [0 2 -1 0 0 0 0] 0.0142515;
+        nuInf           nuInf [0 2 -1 0 0 0 0] 1e-06;
+        k               k [0 0 1 0 0 0 0] 99.6;
+        n               n [0 0 0 0 0 0 0] 0.1003;
+    }
+}
+
+phase2
+{
+    transportModel  Newtonian;
+    rho             rho [1 -3 0 0 0 0 0] 1;
+    nu              nu [0 2 -1 0 0 0 0] 3.36e-06;
+
+    CrossPowerLawCoeffs
+    {
+        nu0             nu0 [0 2 -1 0 0 0 0] 1e-06;
+        nuInf           nuInf [0 2 -1 0 0 0 0] 1e-06;
+        m               m [0 0 1 0 0 0 0] 1;
+        n               n [0 0 0 0 0 0 0] 0;
+    }
+    BirdCarreauCoeffs
+    {
+        nu0             nu0 [0 2 -1 0 0 0 0] 0.0142515;
+        nuInf           nuInf [0 2 -1 0 0 0 0] 1e-06;
+        k               k [0 0 1 0 0 0 0] 99.6;
+        n               n [0 0 0 0 0 0 0] 0.1003;
+    }
+}
+
+//sigma           sigma [1 0 -2 0 0 0 0] 0.07;
+sigma           sigma [1 0 -2 0 0 0 0] 0.0;
+
+
+// ************************************************************************* //

@@ -1,0 +1,64 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.1                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+Build    : 3.1-ef26ee1688d8
+Exec     : interOversetFoam
+Date     : Jun 16 2015
+Time     : 17:23:53
+Host     : temple
+PID      : 25720
+CtrlDict : "/home/hjasak/foam/hjasak-3.1/work/OversetMesh/run/freeSurfaceTests/oversetM5415/system/controlDict"
+Case     : /home/hjasak/foam/hjasak-3.1/work/OversetMesh/run/freeSurfaceTests/oversetM5415
+nProcs   : 1
+SigFpe   : Enabling floating point exception trapping (FOAM_SIGFPE).
+SetNaN : Initialising allocated memory to NaN (FOAM_SETNAN).
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create mesh for time = 0
+
+
+Reading g
+Reading field pd
+
+Reading field alpha1
+
+Reading field U
+
+Reading/calculating face flux field phi
+
+Reading transportProperties
+
+Selecting incompressible transport model Newtonian
+Selecting incompressible transport model Newtonian
+Calculating field g.h
+
+Selecting turbulence model type laminar
+Creating oversetMesh
+Selecting overset fringe type manual
+Selecting overset fringe type faceCells
+Checking donor-acceptor assembly
+Number of acceptor cells = 49722
+Number of donor cells = 23351
+Number of hole cells = 19488
+
+Courant Number mean: 0.0131373 max: 30.3769 velocity magnitude: 1
+
+Starting time loop
+
+Courant Number mean: 0.000214594 max: 0.5 velocity magnitude: 1
+deltaT = 1.64599e-05
+Time = 1.64599e-05
+
+Selecting overset interpolation type injection
+BiCGStab:  Solving for alpha1, Initial residual = 3.90717e-09, Final residual = 5.6274e-17, No Iterations 1
+Liquid phase volume fraction = 0.494426  Min(alpha1) = -0.0142389  Max(alpha1) = 1.40355
+BiCGStab:  Solving for Ux, Initial residual = 7.53183e-07, Final residual = 6.82963e-09, No Iterations 1
+BiCGStab:  Solving for Uy, Initial residual = 1, Final residual = 1.14462e-09, No Iterations 7
+BiCGStab:  Solving for Uz, Initial residual = 1, Final residual = 9.51267e-09, No Iterations 6
+BiCGStab:  Solving for pd, Initial residual = 1, Final residual = 0.0095249, No Iterations 150

@@ -61,24 +61,24 @@ int main(int argc, char *argv[])
 
         T.correctBoundaryConditions();
 
-        fvScalarMatrix TEqn
-        (
-            fvm::laplacian(DT, T)
-        );
+//         fvScalarMatrix TEqn
+//         (
+//             fvm::laplacian(DT, T)
+//         );
 
-        TEqn.solve();
+//         TEqn.solve();
 
-        volScalarField residual
-        (
-            "residual",
-            T
-        );
+//         volScalarField residual
+//         (
+//             "residual",
+//             T
+//         );
 
-        residual.internalField() = TEqn.residual();
-        residual.boundaryField() == 0;
-        residual.write();
+//         residual.internalField() = TEqn.residual();
+//         residual.boundaryField() == 0;
+//         residual.write();
 
-        Info<< "residual " << gSumMag(residual.internalField()) << endl;
+//         Info<< "residual " << gSumMag(residual.internalField()) << endl;
 
 #       include "write.H"
 

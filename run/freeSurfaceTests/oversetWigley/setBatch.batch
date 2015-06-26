@@ -1,0 +1,6 @@
+cellSet backFringe new cellToCell cellRegion0
+cellSet backFringe subset cylinderToCell (-0.27 0 0.0125) (1.27 0 0.0125) 0.335
+cellSet backHole new cellToCell backFringe
+cellSet backHole subset cylinderToCell (-0.23 0 0.0125) (1.23 0 0.0125) 0.26
+cellSet backFringe delete cellToCell backHole
+

@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
             // --- PISO loop
             for (int corr = 0; corr < nCorr; corr++)
             {
-#               include "pEqn.H"
+#               include "pdEqn.H"
             }
 
 #           include "continuityErrs.H"
@@ -106,16 +106,6 @@ int main(int argc, char *argv[])
             rhoPhi = phi*fvc::interpolate(rho);
 
             p = pd + cellOversetMask*rho*gh;
-
-            if (pd.needReference())
-            {
-                p += dimensionedScalar
-                (
-                    "p",
-                    p.dimensions(),
-                    pRefValue - getRefCellValue(p, pdRefCell)
-                );
-            }
 
             turbulence->correct();
         } while (++oCorr < nOuterCorr);

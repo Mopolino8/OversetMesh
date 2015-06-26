@@ -1,0 +1,94 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open source CFD        |
+|  \\    /   O peration     | Version:  1.6-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "0.005/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+12
+(
+    oversetFaces
+    {
+        type            overset;
+        nFaces          0;
+        startFace       1359412;
+    }
+    bottom
+    {
+        type            patch;
+        nFaces          2960;
+        startFace       1359412;
+    }
+    inlet-air
+    {
+        type            patch;
+        nFaces          1840;
+        startFace       1362372;
+    }
+    inlet-water
+    {
+        type            patch;
+        nFaces          1840;
+        startFace       1364212;
+    }
+    outlet
+    {
+        type            patch;
+        nFaces          3680;
+        startFace       1366052;
+    }
+    side
+    {
+        type            patch;
+        nFaces          6808;
+        startFace       1369732;
+    }
+    symmetry
+    {
+        type            symmetryPlane;
+        nFaces          15008;
+        startFace       1376540;
+    }
+    top
+    {
+        type            patch;
+        nFaces          2960;
+        startFace       1391548;
+    }
+    hull
+    {
+        type            wall;
+        nFaces          3500;
+        startFace       1394508;
+    }
+    imax_farfield
+    {
+        type            patch;
+        nFaces          2100;
+        startFace       1398008;
+    }
+    imin_farfield
+    {
+        type            patch;
+        nFaces          2100;
+        startFace       1400108;
+    }
+    kmin_farfield
+    {
+        type            patch;
+        nFaces          6300;
+        startFace       1402208;
+    }
+)
+
+// ************************************************************************* //

@@ -25,7 +25,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "manualFringe.H"
-#include "oversetFringe.H"
+#include "oversetRegion.H"
 #include "Time.H"
 #include "cellSet.H"
 #include "addToRunTimeSelectionTable.H"
@@ -72,6 +72,43 @@ void Foam::manualFringe::calcAddressing() const
             IOobject::NO_WRITE
         ).toc()
     );
+
+    // Debug
+
+    // Get reference to region cell zone
+    const cellZone& rcz = region().zone();
+
+    // Check holes
+    const labelList& h = *holesPtr_;
+
+    forAll (h, holeI)
+    {
+        if (rcz.whichCell(h[holeI]) < 0)
+        {
+            FatalErrorIn
+            (
+                "void Foam::manualFringe::calcAddressing() const"
+            )   << "Invalid hole cell for region " << region().name()
+                << ": cell " << h[holeI] << " does not belong to this region"
+                << abort(FatalError);
+        }
+    }
+
+    // Check acceptors
+    const labelList& a = *acceptorsPtr_;
+
+    forAll (a, accI)
+    {
+        if (rcz.whichCell(a[accI]) < 0)
+        {
+            FatalErrorIn
+            (
+                "void Foam::manualFringe::calcAddressing() const"
+            )   << "Invalid acceptor cell for region " << region().name()
+                << ": cell " << a[accI] << " does not belong to this region"
+                << abort(FatalError);
+        }
+    }
 }
 
 

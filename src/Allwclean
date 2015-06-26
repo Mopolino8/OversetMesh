@@ -1,7 +1,7 @@
 #!/bin/sh
 set -x
 
-wclean oversetRegionID
+wclean oversetRegionIndex
 
 wclean oversetMesh
 wclean oversetDynamicFvMesh

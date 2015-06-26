@@ -11,4 +11,9 @@ runApplication blockMesh
 runApplication setSet -batch setBatch.batch
 \rm -f constant/polyMesh/sets/*_old constant/polyMesh/sets/*_old.gz
 
-runApplication $application
+#runApplication $application
+
+runApplication decomposePar
+runApplication decomposeSets
+runParallel 2 $application
+

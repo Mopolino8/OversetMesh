@@ -295,7 +295,7 @@ void oversetFvPatchField<Type>::correctOffDiag
                 {
                     // Note: on coupled boundaries, all coefficients are
                     // identical.  We can take the first component
-                    // HJ.30/May/2013
+                    // HJ, 30/May/2013
 
                     label patchFacei =
                         mesh.boundaryMesh()[patchi].whichFace(curFace);

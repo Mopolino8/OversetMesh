@@ -27,12 +27,187 @@ License
 #include "oversetMesh.H"
 #include "surfaceFields.H"
 #include "volFields.H"
+#include "polyPatchID.H"
 #include "demandDrivenData.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::oversetMesh::calcHoleTriMesh() const
+{
+    if (holeTriMeshPtr_)
+    {
+        FatalErrorIn("void oversetMesh::calcHoleTriMesh() const")
+            << "Hole tri mesh already calculated"
+            << abort(FatalError);
+    }
+
+    // Collect local hole faces
+    labelHashSet holePatches;
+
+    forAll (holePatchNames_, nameI)
+    {
+        polyPatchID curHolePatch
+        (
+            holePatchNames_[nameI],
+            mesh().boundaryMesh()
+        );
+
+        if (curHolePatch.active())
+        {
+            // If the patch has zero size, do not insert it
+            // Parallel cutting bug.  HJ, 17/Apr/2014
+            if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
+            {
+                holePatches.insert(curHolePatch.index());
+            }
+        }
+        else
+        {
+            FatalErrorIn
+            (
+                "const triSurfaceMesh& oversetMesh::holeTriMesh() const"
+            )   << "Patch "  << holePatchNames_[nameI]
+                << " cannot be found.  Available patch names: "
+                << mesh().boundaryMesh().names()
+                << abort(FatalError);
+        }
+    }
+
+    // Make and invert local triSurface
+    triFaceList triFaces;
+    pointField triPoints;
+
+    // Memory management
+    {
+        triSurface ts = triSurfaceTools::triangulate
+        (
+            mesh().boundaryMesh(),
+            holePatches
+        );
+
+        // Clean mutiple points and zero-sized triangles
+        ts.cleanup(false);
+
+        triFaces.setSize(ts.size());
+        triPoints = ts.points();
+
+        forAll (ts, tsI)
+        {
+            triFaces[tsI] = ts[tsI].reverseFace();
+        }
+    }
+
+    if (Pstream::parRun())
+    {
+        // Combine all faces and points into a single list
+
+        List<triFaceList> allTriFaces(Pstream::nProcs());
+        List<pointField> allTriPoints(Pstream::nProcs());
+
+        allTriFaces[Pstream::myProcNo()] = triFaces;
+        allTriPoints[Pstream::myProcNo()] = triPoints;
+
+        Pstream::gatherList(allTriFaces);
+        Pstream::scatterList(allTriFaces);
+
+        Pstream::gatherList(allTriPoints);
+        Pstream::scatterList(allTriPoints);
+
+        // Re-pack points and faces
+
+        label nTris = 0;
+        label nPoints = 0;
+
+        forAll (allTriFaces, procI)
+        {
+            nTris += allTriFaces[procI].size();
+            nPoints += allTriPoints[procI].size();
+        }
+
+        // Pack points
+        triPoints.setSize(nPoints);
+
+        // Prepare point renumbering array
+        labelListList renumberPoints(Pstream::nProcs());
+
+        nPoints = 0;
+
+        forAll (allTriPoints, procI)
+        {
+            const pointField& ptp = allTriPoints[procI];
+
+            renumberPoints[procI].setSize(ptp.size());
+
+            labelList& procRenumberPoints = renumberPoints[procI];
+
+            forAll (ptp, ptpI)
+            {
+                triPoints[nPoints] = ptp[ptpI];
+                procRenumberPoints[ptpI] = nPoints;
+
+                nPoints++;
+            }
+        }
+
+        // Pack triangles and renumber into complete points on the fly
+        triFaces.setSize(nTris);
+
+        nTris = 0;
+
+        forAll (allTriFaces, procI)
+        {
+            const triFaceList& ptf = allTriFaces[procI];
+
+            const labelList& procRenumberPoints = renumberPoints[procI];
+
+            forAll (ptf, ptfI)
+            {
+                const triFace& procFace = ptf[ptfI];
+
+                triFace& renumberFace = triFaces[nTris];
+
+                forAll (renumberFace, rfI)
+                {
+                    renumberFace[rfI] = procRenumberPoints[procFace[rfI]];
+                }
+
+                nTris++;
+            }
+        }
+    }
+
+    // Make a complete triSurface from local data
+    holeTriMeshPtr_ = new triSurface
+    (
+        triFaces,
+        triPoints
+    );
+
+    // Clean up duplicate points and zero sized triangles
+    holeTriMeshPtr_->cleanup(false);
+
+    if (holeTriMeshPtr_->empty())
+    {
+        InfoIn
+        (
+            "const triSurfaceMesh& oversetMesh::holeTriMesh() const"
+        )   << "No hole patches detected: cannot perform hole cutting"
+            << endl;
+    }
+
+    if (debug)
+    {
+        InfoIn
+        (
+            "const triSurfaceMesh& oversetMesh::holeTriMesh() const"
+        )   << holeTriMeshPtr_->size() << " triangles in hole cutting"
+            << endl;
+    }
+}
+
 
 void Foam::oversetMesh::calcCellClassification() const
 {
@@ -43,7 +218,7 @@ void Foam::oversetMesh::calcCellClassification() const
             << abort(FatalError);
     }
 
-    // Mark acceptor, donor and hole cells
+    // Mark acceptor and donor and hole cells
 
     boolList acceptorMask(mesh().nCells(), false);
     boolList donorMask(mesh().nCells(), false);
@@ -52,27 +227,27 @@ void Foam::oversetMesh::calcCellClassification() const
     forAll (regions_, regionI)
     {
         // Acceptors
-        const labelList& curAcceptors = regions_[regionI].acceptors();
+        const donorAcceptorList& curAcceptors = regions_[regionI].acceptors();
 
         forAll (curAcceptors, aI)
         {
-            acceptorMask[curAcceptors[aI]] = true;
+            acceptorMask[curAcceptors[aI].acceptorCell()] = true;
         }
 
         // Donors
-        const labelList& curDonors = regions_[regionI].donors();
+        const donorAcceptorList& curDonors = regions_[regionI].donors();
 
-        forAll (curDonors, aI)
+        forAll (curDonors, dI)
         {
-            donorMask[curDonors[aI]] = true;
+            donorMask[curDonors[dI].donorCell()] = true;
         }
 
         // Holes
         const labelList& curHoles = regions_[regionI].holes();
 
-        forAll (curHoles, aI)
+        forAll (curHoles, hI)
         {
-            holeMask[curHoles[aI]] = true;
+            holeMask[curHoles[hI]] = true;
         }
     }
 
@@ -98,6 +273,7 @@ void Foam::oversetMesh::calcCellClassification() const
             nAcceptorCells++;
         }
     }
+
     Info<< "Number of acceptor cells = " << nAcceptorCells << endl;
     acceptorCellsPtr_ = new labelList(nAcceptorCells);
     labelList& acceptor = *acceptorCellsPtr_;
@@ -124,6 +300,7 @@ void Foam::oversetMesh::calcCellClassification() const
             nDonorCells++;
         }
     }
+
     Info<< "Number of donor cells = " << nDonorCells << endl;
     donorCellsPtr_ = new labelList(nDonorCells);
     labelList& donor = *donorCellsPtr_;
@@ -151,6 +328,7 @@ void Foam::oversetMesh::calcCellClassification() const
         }
     }
 
+    Info<< "Number of hole cells = " << nHoleCells << nl << endl;
     holeCellsPtr_ = new labelList(nHoleCells);
     labelList& hole = *holeCellsPtr_;
 
@@ -165,7 +343,6 @@ void Foam::oversetMesh::calcCellClassification() const
             nHoleCells++;
         }
     }
-    Info<< "Number of hole cells = " << nHoleCells << nl << endl;
 }
 
 
@@ -232,40 +409,27 @@ void Foam::oversetMesh::calcDomainMarkup() const
     }
 
     // Region ID
-    regionIDPtr_ = new volScalarField
-    (
-        IOobject
-        (
-            "regionID",
-            mesh().time().timeName(),
-            mesh(),
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("zero", dimless, 0)
-    );
-    volScalarField& rID = *regionIDPtr_;
-
-    scalarField& rIDIn = rID.internalField();
+    regionIDPtr_ = new labelList(mesh().nCells());
+    labelList& rID = *regionIDPtr_;
 
     // Mark regions
 
-    const labelList& regionLabels = split();
-
-    forAll (regionLabels, cellI)
+    forAll (regions_, regionI)
     {
-        rIDIn[cellI] = regionLabels[cellI];
+        const labelList& curCells = regions_[regionI].zone();
+
+        forAll (curCells, curCellI)
+        {
+            rID[curCells[curCellI]] = regionI;
+        }
     }
 
-    // Update boundary values
-    forAll (rID.boundaryField(), patchI)
+    // Check regions
+    if (min(rID) < 0)
     {
-        if (!rID.boundaryField()[patchI].coupled())
-        {
-            rID.boundaryField()[patchI] =
-                rID.boundaryField()[patchI].patchInternalField();
-        }
+        FatalErrorIn("void oversetMesh::calcDomainMarkup() const")
+            << "Found cells without region ID.  Please check overset setup"
+            << abort(FatalError);
     }
 }
 
@@ -610,8 +774,6 @@ void Foam::oversetMesh::calcFringeFaces() const
     fringeFaceCellsPtr_ = new labelList(acFC.xfer());
     fringeFaceFlipsPtr_ = new boolList(acFF.xfer());
 
-
-
     // Acceptor internal face collection
 
     DynamicList<label> acInternalF(2*acc.size());
@@ -835,11 +997,19 @@ void Foam::oversetMesh::calcHoleFaces() const
 }
 
 
-void Foam::oversetMesh::calcFringeAddressing() const
+void Foam::oversetMesh::calcParallelAddressing() const
 {
-    if (fringeAddressingPtr_)
+    if
+    (
+        localDonorsPtr_
+     || localDonorAddrPtr_
+     || remoteDonorsPtr_
+     || remoteAcceptorAddrPtr_
+     || globalAcceptFromProcPtr_
+     || globalAcceptFromCellPtr_
+    )
     {
-        FatalErrorIn("void oversetMesh::calcFringeAddressing() const")
+        FatalErrorIn("void oversetMesh::calcParallelAddressing() const")
             << "Fringe addressing already calculated"
             << abort(FatalError);
     }
@@ -864,31 +1034,283 @@ void Foam::oversetMesh::calcFringeAddressing() const
         dcIndex[dc[dcI]] = dcI;
     }
 
-    // Create fringeAddressing
-    fringeAddressingPtr_ = new labelList(ac.size(), -1);
-    labelList& addr = *fringeAddressingPtr_;
+    // Create local donor to local acceptor addressing
+    localDonorsPtr_ = new labelList(ac.size(), -1);
+    labelList& locDonors = *localDonorsPtr_;
 
-    // Go through all acceptors and pick up the donor
-    forAll (regions_, regionI)
+    // Create local donor to local acceptor addressing
+    localDonorAddrPtr_ = new labelList(ac.size(), -1);
+    labelList& locDonorAddr = *localDonorAddrPtr_;
+
+    if (Pstream::parRun())
     {
-        // Acceptors
-        const labelList& curAcceptors = regions_[regionI].acceptors();
+        // Parallel run: handle remote donors
+        // Algorithm:
+        // 1) Collect local donors and mark them directly in the list
+        // 2) For remote donors providing data for the local processor,
+        //    mark the processor they come from and their location
+        //    in the local interpolation list
+        // 3) Communicate the local donor and acceptor data to the master,
+        //    which assembles the addressing
 
-        // Donors
-        const labelList& curDonors = regions_[regionI].donors();
+        // Acceptor list will be filled in two loops:
+        // - first, local donors are inserted into the acceptor array
+        // - second, remote donors are filled and sent to the master processor
+        // - third, master processor reshuffles the processor donor data
+        //   based on the acceptor processor index
+        //   and sends the data to acceptor processors
+        // - fourth, the remote donor data is unpacked into the acceptor array
+        // - fifth, donor-to-acceptor interpolation is executed in a straight
+        //   loop
 
-        forAll (curAcceptors, aI)
+        // Create remote donor addressing
+        remoteDonorsPtr_ = new labelList(dc.size(), -1);
+        labelList& remDonors = *remoteDonorsPtr_;
+
+        // Prepare remote donor list for master processor to
+        // calculate addressing.  This list contains local
+        // donor cells whose acceptor is on a different processor
+        donorAcceptorListList globalRemoteDonors(Pstream::nProcs());
+        donorAcceptorList& procRemoteDonors =
+            globalRemoteDonors[Pstream::myProcNo()];
+
+        // Size the remote donor list for the local processor
+        procRemoteDonors.setSize(dc.size());
+
+        // Create remote acceptor addressing
+        remoteAcceptorAddrPtr_ = new labelList(ac.size(), -1);
+        labelList& remAcceptorAddr = *remoteAcceptorAddrPtr_;
+
+        // Prepare local acceptor list for master processor
+        // to calculate addressing.  This list contains local
+        // acceptor cells whose donor is on a different processor
+        donorAcceptorListList globalRemoteAcceptors(Pstream::nProcs());
+        donorAcceptorList& procRemoteAcceptors =
+            globalRemoteAcceptors[Pstream::myProcNo()];
+
+        // Size the remote acceptor list for local processor
+        procRemoteAcceptors.setSize(ac.size());
+
+        // Count local donors to local acceptors
+        label nLocalAddr = 0;
+
+        // Count remote donors
+        label nRemoteDonors = 0;
+
+        // Count remote acceptors
+        label nRemoteAcceptors = 0;
+
+        // Collect and mark acceptors that are local
+        forAll (regions_, regionI)
         {
-            // Grab addressing from expanded lists
-            addr[acIndex[curAcceptors[aI]]] = dcIndex[curDonors[aI]];
+            // Analyse the acceptor list
+            const donorAcceptorList& curAcceptors =
+                regions_[regionI].acceptors();
+
+            forAll (curAcceptors, aI)
+            {
+                if (curAcceptors[aI].donorProcNo() == Pstream::myProcNo())
+                {
+                    // Local donor and acceptor
+                    locDonors[nLocalAddr] = curAcceptors[aI].donorCell();
+                    locDonorAddr[nLocalAddr] = nLocalAddr;
+                    nLocalAddr++;
+                }
+                else
+                {
+                    // Record local acceptor with a remote donor:
+                    // Data will be received from master
+                    remAcceptorAddr[nRemoteAcceptors] = aI;
+
+                    procRemoteAcceptors[nRemoteAcceptors] = curAcceptors[aI];
+
+                    nRemoteAcceptors++;
+                }
+            }
+
+            // Analyse the donor list
+            const donorAcceptorList& curDonors = regions_[regionI].donors();
+
+            forAll (curDonors, dI)
+            {
+                if (curDonors[dI].acceptorProcNo() == Pstream::myProcNo())
+                {
+                    // Local donor and acceptor
+                    // Data has already been recorded from the acceptor side
+                    // Add debug check?
+                }
+                else
+                {
+                    // Record local donor for a remote acceptor:
+                    // Data will be sent to the master
+                    remDonors[nRemoteDonors] = curDonors[dI].donorCell();
+
+                    procRemoteDonors[nRemoteDonors] = curDonors[dI];
+
+                    nRemoteDonors++;
+                }
+            }
+        } // End of for all regions
+
+        // Reset the size of lists
+        locDonors.setSize(nLocalAddr);
+        locDonorAddr.setSize(nLocalAddr);
+
+        remAcceptorAddr.setSize(nRemoteAcceptors);
+        procRemoteAcceptors.setSize(nRemoteAcceptors);
+
+        // Reset the size of lists
+        remDonors.setSize(nRemoteDonors);
+        procRemoteDonors.setSize(nRemoteDonors);
+
+        Pout<< "Number of donors: local = " << nLocalAddr 
+            << " remote = " << nRemoteDonors
+            << " Number of local acceptors = " << ac.size() - nRemoteAcceptors
+            << " remote = " << nRemoteAcceptors
+            << endl;
+
+        // Gather remote donor and  acceptor data before commes indentification
+        Pstream::gatherList(globalRemoteDonors);
+        Pstream::gatherList(globalRemoteAcceptors);
+
+        // Now all data is available on master.  Perform analysis
+        if (Pstream::master())
+        {
+            // Make a map of donor cells on all processors
+            // May key is the donor cell index and its value is the
+            // index in donor list
+            List<Map<label> > globalDonorLookup(Pstream::nProcs());
+
+            forAll (globalDonorLookup, procI)
+            {
+                Map<label>& procDonorLookup = globalDonorLookup[procI];
+
+                // Get processor donor data
+                const donorAcceptorList& procDonors =
+                    globalRemoteDonors[procI];
+
+                forAll (procDonors, donorI)
+                {
+                    procDonorLookup.insert
+                    (
+                        procDonors[donorI].donorCell(),
+                        donorI
+                    );
+                }
+            }
+
+            // globalDonorLookup will be used for fast lookup without search
+            // HJ, 25/May/2015
+
+            // Allocate the storage for addressing
+
+            // Create global accept from processor addressing
+            globalAcceptFromProcPtr_ = new labelListList(Pstream::nProcs());
+            labelListList& globalAcceptProc = *globalAcceptFromProcPtr_;
+
+            // Create global accept from cell addressing
+            globalAcceptFromCellPtr_ = new labelListList(Pstream::nProcs());
+            labelListList& globalAcceptCell = *globalAcceptFromCellPtr_;
+
+            // For all processors, find which donor from which other
+            // processor contains the data
+            forAll (globalRemoteAcceptors, procI)
+            {
+                const donorAcceptorList& procAcceptors =
+                    globalRemoteAcceptors[procI];
+
+                // Resize addressing
+                labelList& curAcceptFromProc = globalAcceptProc[procI];
+                labelList& curAcceptFromCell = globalAcceptCell[procI];
+
+                curAcceptFromProc.setSize(procAcceptors.size());
+                curAcceptFromCell.setSize(procAcceptors.size());
+
+                // Collect data from other processors
+                forAll (procAcceptors, accI)
+                {
+                    const donorAcceptor& da = procAcceptors[accI];
+
+                    // Get donor processor list of donors
+                    const label donorProc = da.donorProcNo();
+
+                    // Search to find which donor to pick up.
+
+                    const Map<label>& procDonorLookup =
+                        globalDonorLookup[donorProc];
+
+                    // Find my donor cell index in the map
+                    const Map<label>::const_iterator iter =
+                        procDonorLookup.find(da.donorCell());
+
+                    if (iter != procDonorLookup.end())
+                    {
+                        // Found donor.  Record addressing
+                        curAcceptFromProc[accI] = da.donorProcNo();
+                        curAcceptFromCell[accI] = iter();
+                    }
+                    else
+                    {
+                        FatalErrorIn
+                        (
+                            "void oversetMesh::calcParallelAddressing() const"
+                        )   << "Cannot find pairing for acceptor " << da
+                            << abort(FatalError);
+                    }
+                }
+            }
+
+            // Check parallel addressing
+            forAll (globalAcceptProc, procI)
+            {
+                if
+                (
+                    min(globalAcceptProc[procI]) < 0
+                 || min(globalAcceptCell[procI]) < 0
+                )
+                {
+                    FatalErrorIn
+                    (
+                        "void oversetMesh::calcParallelAddressing() const"
+                    )   << "Error in parallel addressing assembly "
+                        << " for processor " << procI
+                        << abort(FatalError);
+                }
+            }
+        }
+    }
+    else
+    {
+        // Serial run: all donors and acceptors are local
+
+        // Count local donors to local acceptors
+        label nLocalAddr = 0;
+
+        Info<< "locDonors.size() = " << locDonors.size()
+            << " locDonorAddr.size() = " << locDonorAddr.size()
+            << " nLocalAddr = " << nLocalAddr << endl;
+        // Go through all acceptors and pick up the donor
+        forAll (regions_, regionI)
+        {
+            // Acceptors
+            const donorAcceptorList& curAcceptors =
+                regions_[regionI].acceptors();
+
+            forAll (curAcceptors, aI)
+            {
+                // Grab local donor from the list
+                locDonors[nLocalAddr] = curAcceptors[aI].donorCell();
+                locDonorAddr[nLocalAddr] = nLocalAddr;
+                nLocalAddr++;
+            }
         }
     }
 
-    // Check addressing
-    if (min(addr) < 0)
+    // Check serial addressing
+    if (min(locDonorAddr) < 0)
     {
-        FatalErrorIn("void oversetMesh::calcFringeAddressing() const")
-            << "Error in fringeAddressing assembly"
+        FatalErrorIn("void oversetMesh::calcParallelAddressing() const")
+            << "Error in local addressing assembly"
             << abort(FatalError);
     }
 
@@ -900,7 +1322,9 @@ void Foam::oversetMesh::calcFringeAddressing() const
 
 void Foam::oversetMesh::clearOut() const
 {
-    deleteDemandDrivenData(splitPtr_);
+    deleteDemandDrivenData(holeTriMeshPtr_);
+    deleteDemandDrivenData(holeSearchPtr_);
+
     deleteDemandDrivenData(acceptorCellsPtr_);
     deleteDemandDrivenData(donorCellsPtr_);
     deleteDemandDrivenData(holeCellsPtr_);
@@ -922,12 +1346,49 @@ void Foam::oversetMesh::clearOut() const
     deleteDemandDrivenData(holeInternalFacesPtr_);
     deleteDemandDrivenData(acceptorInternalFacesPtr_);
 
-    deleteDemandDrivenData(fringeAddressingPtr_);
+    deleteDemandDrivenData(localDonorsPtr_);
+    deleteDemandDrivenData(localDonorAddrPtr_);
+    deleteDemandDrivenData(remoteDonorsPtr_);
+    deleteDemandDrivenData(remoteAcceptorAddrPtr_);
+    deleteDemandDrivenData(globalAcceptFromProcPtr_);
+    deleteDemandDrivenData(globalAcceptFromCellPtr_);
+
     deleteDemandDrivenData(interpolationPtr_);
 }
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::oversetMesh::holePatchesPresent() const
+{
+    return !holeTriMesh().empty();
+}
+
+
+const Foam::triSurface& Foam::oversetMesh::holeTriMesh() const
+{
+    if (!holeTriMeshPtr_)
+    {
+        calcHoleTriMesh();
+    }
+
+    return *holeTriMeshPtr_;
+}
+
+
+const Foam::triSurfaceSearch& Foam::oversetMesh::holeSearch() const
+{
+    if (!holeSearchPtr_)
+    {
+        holeSearchPtr_ = new triSurfaceSearch
+        (
+            holeTriMesh()
+        );
+    }
+
+    return *holeSearchPtr_;
+}
+
 
 const Foam::labelList& Foam::oversetMesh::acceptorCells() const
 {
@@ -973,7 +1434,7 @@ const Foam::volScalarField& Foam::oversetMesh::oversetTypes() const
 }
 
 
-const Foam::volScalarField& Foam::oversetMesh::regionID() const
+const Foam::labelList& Foam::oversetMesh::regionID() const
 {
     if (!regionIDPtr_)
     {
@@ -1105,14 +1566,123 @@ const Foam::labelList& Foam::oversetMesh::acceptorInternalFaces() const
 }
 
 
-const Foam::labelList& Foam::oversetMesh::fringeAddressing() const
+const Foam::labelList& Foam::oversetMesh::localDonors() const
 {
-    if (!fringeAddressingPtr_)
+    if (!localDonorsPtr_)
     {
-        calcFringeAddressing();
+        calcParallelAddressing();
     }
 
-    return *fringeAddressingPtr_;
+    return *localDonorsPtr_;
+}
+
+
+const Foam::labelList& Foam::oversetMesh::localDonorAddr() const
+{
+    if (!localDonorAddrPtr_)
+    {
+        calcParallelAddressing();
+    }
+
+    return *localDonorAddrPtr_;
+}
+
+
+const Foam::labelList& Foam::oversetMesh::remoteDonors() const
+{
+    if (!remoteDonorsPtr_)
+    {
+        calcParallelAddressing();
+    }
+
+    return *remoteDonorsPtr_;
+}
+
+
+const Foam::labelList& Foam::oversetMesh::remoteAcceptorAddr() const
+{
+    if (!remoteAcceptorAddrPtr_)
+    {
+        calcParallelAddressing();
+    }
+
+    return *remoteAcceptorAddrPtr_;
+}
+
+
+const Foam::labelListList& Foam::oversetMesh::globalAcceptFromProc() const
+{
+    if (Pstream::parRun())
+    {
+        if (Pstream::master())
+        {
+            if (!globalAcceptFromProcPtr_)
+            {
+                calcParallelAddressing();
+            }
+
+            return *globalAcceptFromProcPtr_;
+        }
+        else
+        {
+            FatalErrorIn
+            (
+                "const labelListList& oversetMesh::"
+                "globalAcceptFromProc() const"
+            )   << "Requested global addressing from slave processor.  "
+                << "This data is only calculated and used on master"
+                << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn
+        (
+            "const labelListList& oversetMesh::globalAcceptFromProc() const"
+        )   << "Requested global addressing for a serial run"
+            << abort(FatalError);
+    }
+
+    // Dummy return to keep compiler happy
+    return *globalAcceptFromProcPtr_;
+}
+
+
+const Foam::labelListList& Foam::oversetMesh::globalAcceptFromCell() const
+{
+    if (Pstream::parRun())
+    {
+        if (Pstream::master())
+        {
+            if (!globalAcceptFromCellPtr_)
+            {
+                calcParallelAddressing();
+            }
+
+            return *globalAcceptFromCellPtr_;
+        }
+        else
+        {
+            FatalErrorIn
+            (
+                "const labelListList& oversetMesh::"
+                "globalAcceptFromCell() const"
+            )   << "Requested global addressing from slave processor.  "
+                << "This data is only calculated and used on master"
+                << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn
+        (
+            "const labelListList& oversetMesh::globalAcceptFromCell() const"
+        )   << "Requested global addressing for a serial run"
+            << abort(FatalError);
+    }
+
+    // Dummy return to keep compiler happy
+    return *globalAcceptFromCellPtr_;
 }
 
 

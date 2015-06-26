@@ -29,66 +29,17 @@ License
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Type>
-void Foam::oversetMesh::filterDonors
+void Foam::oversetMesh::interpolate
 (
-    Field<Type>& donorF,
+    Field<Type>& accF,
     const Field<Type>& cellF
 ) const
 {
-    // Get donor list from interpolation
-    const labelList& d = interpolation().donors();
-
     // Check sizes
     if
     (
-        cellF.size() != mesh().nCells()
-     || donorF.size() != d.size()
-    )
-    {
-        FatalErrorIn
-        (
-            "void oversetMesh::filterDonors\n"
-            "(\n"
-            "    Field<Type>& donorF,\n"
-            "    const Field<Type>& cellF,\n"
-            ") const"
-        )   << "Size of fields does not correspond to filtering" << nl
-            << "Source field size = " << cellF.size()
-            << " mesh size = " << mesh().nCells() << nl
-            << " target field size = " << donorF.size()
-            << " donor list size = " << d.size()
-            << abort(FatalError);
-    }
-
-    // Collect donor cells
-    forAll (donorF, i)
-    {
-        donorF[i] = cellF[d[i]];
-    }
-}
-
-
-template<class Type>
-void Foam::oversetMesh::donorToAcceptor
-(
-    Field<Type>& accF,
-    const Field<Type>& donorF
-) const
-{
-    // Interpolation with weights and addressing provided
-
-    // Get donor list from interpolation.  Checking
-    const labelList& d = interpolation().donors();
-
-    // Get addressing and weights from interpolation
-    const labelListList& addr = interpolation().addressing();
-    const FieldField<Field, scalar>& weights = interpolation().weights();
-
-    // Check sizes
-    if
-    (
-        donorF.size() != d.size()
-     || accF.size() != addr.size()
+        accF.size() != this->acceptorCells().size()
+     || cellF.size() != this->mesh().nCells()
     )
     {
         FatalErrorIn
@@ -96,43 +47,100 @@ void Foam::oversetMesh::donorToAcceptor
             "void oversetMesh::donorToAcceptor\n"
             "(\n"
             "    Field<Type>& accF,\n"
-            "    const Field<Type>& donorF,\n"
+            "    const Field<Type>& ,cellF\n"
             ") const"
         )   << "Size of fields does not correspond to interpolation" << nl
-            << "Source field size = " << donorF.size()
-            << " donor list size = " << d.size()
+            << "Source field size = " << cellF.size()
+            << " mesh size = " << this->mesh().nCells()
             << " target field size = " << accF.size()
             << " acceptor list size = " << this->acceptorCells().size()
             << abort(FatalError);
     }
 
-    forAll (accF, accI)
-    {
-        const labelList& nbr = addr[accI];
-        const scalarField& w = weights[accI];
-            
-        accF[accI] = pTraits<Type>::zero;
+    // Insert local donors into local acceptors
 
-        forAll (nbr, nI)
+    // Get list of local donors
+    const labelList& ld = this->localDonors();
+
+    // Get local donor addressing
+    const labelList& ldAddr = this->localDonorAddr();
+
+    forAll (ld, ldI)
+    {
+        accF[ldAddr[ldI]] = cellF[ld[ldI]];
+    }
+
+    if (Pstream::parRun())
+    {
+        // Get remote donor addressing
+        const labelList& rdAddr = this->remoteDonors();
+
+        // Collect remote donors for communication
+        List<List<Type> > globalRemoteDonors(Pstream::nProcs());
+
+        // Fill in remote donors
+        List<Type>& rd = globalRemoteDonors[Pstream::myProcNo()];
+        rd.setSize(rdAddr.size());
+
+        forAll (rdAddr, rdI)
         {
-            accF[accI] += donorF[nbr[nI]]*w[nI];
+            rd[rdI] = cellF[rdAddr[rdI]];
+        }
+
+        // Communicate to master
+        Pstream::gatherList(globalRemoteDonors);
+
+        // Prepare acceptor list
+        List<List<Type> > globalRemoteAcceptors(Pstream::nProcs());
+    
+        // Master processor reorganises the donor data for each targer
+        if (Pstream::master())
+        {
+            // Get addressing
+            const labelListList& globalAccProc = this->globalAcceptFromProc();
+            const labelListList& globalAccCell = this->globalAcceptFromCell();
+
+            // Resize and fill remote acceptor processor arrays for
+            // all processors
+            forAll (globalRemoteAcceptors, procI)
+            {
+                // Get processor addressing
+                const labelList& procAccProc = globalAccProc[procI];
+                const labelList& procAccCell = globalAccCell[procI];
+
+                // Get processor acceptor data to fill in
+                List<Type>& procRA = globalRemoteAcceptors[procI];
+
+                // Resize results list
+                procRA.setSize(procAccProc.size());
+
+                forAll (procRA, accI)
+                {
+                    procRA[accI] =
+                        globalRemoteDonors[procAccProc[accI]]
+                        [procAccCell[accI]];
+                }
+            }
+        }
+
+        // Communicate global acceptors to all processors
+        Pstream::scatter(globalRemoteAcceptors);
+
+        // Insert remote acceptors
+
+        // Get data belonging to local processor
+        const List<Type>& procRemoteAcceptors =
+            globalRemoteAcceptors[Pstream::myProcNo()];
+
+        // Get addressing
+        const labelList& raAddr = this->remoteAcceptorAddr();
+
+        // Insert remote acceptors
+        forAll (raAddr, raI)
+        {
+            accF[raAddr[raI]] = procRemoteAcceptors[raI];
         }
     }
-}
-
-
-template<class Type>
-void Foam::oversetMesh::interpolate
-(
-    Field<Type>& accF,
-    const Field<Type>& cellF
-) const
-{
-    Field<Type> donorF(interpolation().donors().size());
-
-    filterDonors(donorF, cellF);
-
-    donorToAcceptor(accF, donorF);
 }
 
 

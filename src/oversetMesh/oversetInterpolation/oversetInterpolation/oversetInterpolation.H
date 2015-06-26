@@ -26,7 +26,8 @@ Class
     oversetInterpolation
 
 Description
-    Virtual base class for overset interpolation selection
+    Virtual base class for overset interpolation selection.
+    Handles cached addressing and weights
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.
@@ -40,7 +41,7 @@ SourceFiles
 #ifndef oversetInterpolation_H
 #define oversetInterpolation_H
 
-#include "IOdictionary.H"
+#include "dictionary.H"
 #include "typeInfo.H"
 #include "labelList.H"
 #include "scalarField.H"
@@ -135,8 +136,11 @@ public:
 
         // Interpolation data
 
+            //- Return interpolation local donor list
+            virtual const labelList& localDonors() const = 0;
+
             //- Return interpolation donor list
-            virtual const labelList& donors() const = 0;
+            virtual const labelList& remoteDonors() const = 0;
 
             //- Return acceptor addressing
             virtual const labelListList& addressing() const = 0;

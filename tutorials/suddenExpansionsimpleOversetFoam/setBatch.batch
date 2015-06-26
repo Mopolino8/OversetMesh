@@ -1,5 +1,0 @@
-cellSet outletFringe new cellToCell outlet
-cellSet outletFringe subset boxToCell (0 -0.019 -0.001) (0.005 0.019 0.001)
-cellSet empty new labelToCell 0 ()
-
-quit

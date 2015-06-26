@@ -25,9 +25,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "compositeFringe.H"
-#include "oversetFringe.H"
-#include "Time.H"
-#include "cellSet.H"
+#include "oversetRegion.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -77,9 +75,14 @@ void Foam::compositeFringe::calcAddressing() const
             << abort(FatalError);
     }
 
-    // Initialise hole and acceptor look-up
-    boolList holes(mesh().nCells(), false);
-    boolList acceptors(mesh().nCells(), false);
+    // Get reference to region cell zone
+    const cellZone& rcz = region().zone();
+
+    // Make a hash set to collect acceptor points
+    labelHashSet acceptorSet;
+
+    // Make a hash set to collect hole points
+    labelHashSet holeSet;
 
     // Go through all base fringes and record holes and acceptors
     forAll (baseFringes_, bfI)
@@ -88,69 +91,32 @@ void Foam::compositeFringe::calcAddressing() const
 
         forAll (ch, chI)
         {
-            holes[ch[chI]] = true;
+            // Check if cell is in region zone
+            if (rcz.whichCell(ch[chI]) > -1)
+            {
+                // Found acceptor
+                acceptorSet.insert(ch[chI]);
+            }
         }
 
         const labelList& ca = baseFringes_[bfI].acceptors();
 
         forAll (ca, caI)
         {
-            acceptors[ca[caI]] = true;
-        }
-    }
-
-
-    // Count and collect holes
-    {
-        label nHoles = 0;
-
-        forAll (holes, hI)
-        {
-            if (holes[hI])
+            // Check if cell is in region zone
+            if (rcz.whichCell(ca[caI]) > -1)
             {
-                nHoles++;
-            }
-        }
-
-        holesPtr_ = new labelList(nHoles);
-        labelList& h = *holesPtr_;
-        nHoles = 0;
-
-        forAll (holes, hI)
-        {
-            if (holes[hI])
-            {
-                h[nHoles] = hI;
-                nHoles++;
+                // Found acceptor
+                acceptorSet.insert(ca[caI]);
             }
         }
     }
 
-    // Count and collect acceptors
-    {
-        label nAcceptors = 0;
+    // Collect holes
+    holesPtr_ = new labelList(holeSet.sortedToc());
 
-        forAll (acceptors, aI)
-        {
-            if (acceptors[aI])
-            {
-                nAcceptors++;
-            }
-        }
-
-        acceptorsPtr_ = new labelList(nAcceptors);
-        labelList& a = *acceptorsPtr_;
-        nAcceptors = 0;
-
-        forAll (acceptors, aI)
-        {
-            if (acceptors[aI])
-            {
-                a[nAcceptors] = aI;
-                nAcceptors++;
-            }
-        }
-    }
+    // Collect acceptors
+    acceptorsPtr_ = new labelList(acceptorSet.sortedToc());
 }
 
 
@@ -214,7 +180,6 @@ const Foam::labelList& Foam::compositeFringe::acceptors() const
 
 void Foam::compositeFringe::update()
 {
-    Info<< "compositeFringe::update()" << endl;
     forAll (baseFringes_, bfI)
     {
         baseFringes_[bfI].update();

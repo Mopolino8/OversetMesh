@@ -65,7 +65,7 @@ void Foam::injectionInterpolation::calcAddressing() const
     );
     FieldField<Field, scalar>& w = *weightsPtr_;
 
-    const labelList& donors = overset().fringeAddressing();
+    const labelList& donors = overset().localDonors();
 
     forAll (addr, addrI)
     {
@@ -109,10 +109,17 @@ Foam::injectionInterpolation::~injectionInterpolation()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::injectionInterpolation::donors() const
+const Foam::labelList& Foam::injectionInterpolation::localDonors() const
 {
     // Compact addressing: single donor for single cell injection
-    return overset().donorCells();
+    return overset().localDonors();
+}
+
+
+const Foam::labelList& Foam::injectionInterpolation::remoteDonors() const
+{
+    // Compact addressing: single donor for single cell injection
+    return overset().remoteDonors();
 }
 
 

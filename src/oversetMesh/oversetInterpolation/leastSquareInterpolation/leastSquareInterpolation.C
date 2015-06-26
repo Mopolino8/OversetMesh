@@ -63,7 +63,7 @@ void Foam::leastSquareInterpolation::calcAddressing() const
     weightsPtr_ = new FieldField<Field, scalar>(ac.size());
     FieldField<Field, scalar>& w = *weightsPtr_;
 
-    const labelList& donors = overset().fringeAddressing();
+    const labelList& donors = overset().localDonors();
 
     // Prepare a mask excluding hole and acceptor cells from the selection
     const labelList& hc = overset().holeCells();
@@ -167,10 +167,15 @@ Foam::leastSquareInterpolation::~leastSquareInterpolation()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::leastSquareInterpolation::donors() const
+const Foam::labelList& Foam::leastSquareInterpolation::localDonors() const
 {
-    // Compact addressing: single donor for single cell injection
-    return overset().donorCells();
+    return overset().localDonors();
+}
+
+
+const Foam::labelList& Foam::leastSquareInterpolation::remoteDonors() const
+{
+    return overset().remoteDonors();
 }
 
 

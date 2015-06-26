@@ -101,32 +101,15 @@
     );
 
 
-    label pdRefCell = 0;
-    scalar pdRefValue = 0.0;
+    label pRefCell = 0;
+    scalar pRefValue = 0.0;
     setRefCell
     (
         pd,
         mesh.solutionDict().subDict("PIMPLE"),
-        pdRefCell,
-        pdRefValue
+        pRefCell,
+        pRefValue
     );
-
-    scalar pRefValue = 0.0;
-
-    if (pd.needReference())
-    {
-        pRefValue = readScalar
-        (
-            mesh.solutionDict().subDict("PIMPLE").lookup("pRefValue")
-        );
-
-        p += dimensionedScalar
-        (
-            "p",
-            p.dimensions(),
-            pRefValue - getRefCellValue(p, pdRefCell)
-        );
-    }
 
     // Construct interface from alpha1 distribution
     interfaceProperties interface(alpha1, U, twoPhaseProperties);

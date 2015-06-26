@@ -31,59 +31,58 @@ License
 #include "triSurfaceTools.H"
 #include "demandDrivenData.H"
 
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+const Foam::debug::optimisationSwitch
+Foam::oversetRegion::donorFraction
+(
+    "donorFraction",
+    30
+);
+
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::oversetRegion::calcRegionCells() const
+void Foam::oversetRegion::calcDonorRegions() const
 {
-    if (regionCellsPtr_)
+    if (donorRegionsPtr_)
     {
-        FatalErrorIn("void oversetRegion::calcRegionCells() const")
-            << "Region cells already calculated"
+        FatalErrorIn("void oversetRegion::calcDonorRegions() const")
+            << "Donor regions already calculated"
             << abort(FatalError);
     }
 
-    // Create the octree search from all donor regions
-    const regionSplit& rs = oversetMesh_.split();
+    // Get regions
+    const PtrList<oversetRegion>& regions = oversetMesh_.regions();
 
-    // Check region index
-    if (index_ < 0 || index_ >= rs.nRegions())
+    donorRegionsPtr_ = new labelList(donorRegionNames_.size());
+    labelList& donRegions = *donorRegionsPtr_;
+
+    forAll (donorRegionNames_, drI)
     {
-        FatalErrorIn("void oversetRegion::calcRegionCells() const")
-            << "Invalid overset region index " << index_
-            << ".  Available number of regions = " << rs.nRegions()
-            << abort(FatalError);
-    }
+        bool found = false;
 
-    // Count number of cells in region
-    label nCells = 0;
+        // Get name to search for
+        const word& curName = donorRegionNames_[drI];
 
-    forAll (rs, cellI)
-    {
-        if (rs[cellI] == index_)
+        // Find donor region name
+        forAll (regions, orI)
         {
-            nCells++;
+            if (regions[orI].name() == curName)
+            {
+                // Found donor region name in the list
+                found = true;
+
+                donRegions[drI] = orI;
+                break;
+            }
         }
-    }
 
-    if (nCells == 0 && !Pstream::parRun())
-    {
-        FatalErrorIn("void oversetRegion::calcRegionCells() const")
-            << "No cells found in region index " << index_
-            << abort(FatalError);
-    }
-
-    regionCellsPtr_ = new labelList(nCells);
-    labelList& rc = *regionCellsPtr_;
-
-    // Reset counter and collect cells
-    nCells = 0;
-
-    forAll (rs, cellI)
-    {
-        if (rs[cellI] == index_)
+        if (!found)
         {
-            rc[nCells] = cellI;
-            nCells++;
+            FatalErrorIn("void oversetRegion::calcDonorRegions() const")
+                << "For region " << name() << " cannot find donor region "
+                << curName << ".  Please check overset definition"
+                << abort(FatalError);
         }
     }
 }
@@ -98,16 +97,16 @@ void Foam::oversetRegion::calcAcceptorRegions() const
             << abort(FatalError);
     }
 
-    const label nRegions = oversetMesh_.split().nRegions();
+    const PtrList<oversetRegion>& regions = oversetMesh_.regions();
 
-    acceptorRegionsPtr_ = new labelList(nRegions);
+    acceptorRegionsPtr_ = new labelList(regions.size());
     labelList& accRegions = *acceptorRegionsPtr_;
 
     label nAccRegions = 0;
 
     // Go through all regions apart from the current and check if
     // this region appears in the donor list
-    for (label regionI = 0; regionI < nRegions; regionI++)
+    forAll (regions, regionI)
     {
         // Skip current region
         if (regionI == index())
@@ -115,8 +114,7 @@ void Foam::oversetRegion::calcAcceptorRegions() const
             continue;
         }
 
-        const labelList& remoteDonors =
-            oversetMesh_.region(regionI).donorRegions();
+        const labelList& remoteDonors = regions[regionI].donorRegions();
 
         forAll (remoteDonors, rdI)
         {
@@ -135,119 +133,464 @@ void Foam::oversetRegion::calcAcceptorRegions() const
 }
 
 
-void Foam::oversetRegion::calcAcceptorCells() const
+void Foam::oversetRegion::calcDonorAcceptorCells() const
 {
-    if (acceptorCellsPtr_)
+    if (donorCellsPtr_ || acceptorCellsPtr_)
     {
-        FatalErrorIn("void oversetRegion::calcAcceptorCells() const")
-            << "Acceptor cells already calculated"
-            << abort(FatalError);
-    }
-
-    // Grab acceptor cells from fringe algorithm
-    acceptorCellsPtr_ = new labelList(fringePtr_().acceptors());
-}
-
-
-void Foam::oversetRegion::calcDonorCells() const
-{
-    if (donorCellsPtr_)
-    {
-        FatalErrorIn("void oversetRegion::calcDonorCells() const")
+        FatalErrorIn("void oversetRegion::calcDonorAcceptorCells() const")
             << "Donor cells already calculated"
             << abort(FatalError);
     }
 
-    // Algorithm:
-    // - go through the hierarchy of donor regions and search for cell
-    //   containing the acceptor
+    // Get regions
+    const PtrList<oversetRegion>& regions = oversetMesh_.regions();
 
-    const labelList& dr = donorRegions();
+    // Behave as acceptor: prepare acceptor data for search
+    // Operating on acceptor cells for current region on local processor
 
-    // Get list of acceptor cell labels
-    const labelList& a = acceptors();
+    // Prepare and broadcast all acceptors from this region
 
     // Get cell centres
     const vectorField& cc = mesh_.cellCentres();
 
-    donorCellsPtr_ = new labelList(a.size(), -1);
-    labelList& d = *donorCellsPtr_;
+    // Get list of donor regions
+    const labelList& dr = donorRegions();
 
-    // Go through all donor regions
-    forAll (dr, drI)
+    // Get list of local acceptor cell labels from fringe
+    const labelList& a = fringePtr_().acceptors();
+
+    if (Pstream::parRun())
     {
-        if (dr[drI] == index())
+        // Make a global list of all acceptors
+        donorAcceptorListList globalDonorAcceptor(Pstream::nProcs());
+
+        // Memory management
         {
-            FatalErrorIn("void oversetRegion::calcDonorCells() const")
-                << "Region " << index() << " specified as the donor "
-                << "of itself.  List of donors: " << dr << nl
-                << "This is not allowed: please check oversetMesh definition"
-                << abort(FatalError);
+            // Insert local acceptors into a global list
+            donorAcceptorList& curDA =
+                globalDonorAcceptor[Pstream::myProcNo()];
+
+            curDA.setSize(a.size());
+
+            forAll (a, aI)
+            {
+                curDA[aI] = donorAcceptor
+                (
+                    a[aI],
+                    Pstream::myProcNo(),
+                    cc[a[aI]]
+                );
+            }
         }
 
-        // Get donor region tree
-//         const indexedOctree<treeDataCell>& tree =
-//             oversetMesh_.region(donorRegions_[drI]).cellTree();
+        // Gather-scatter acceptor data before donor indentification
+        Pstream::gatherList(globalDonorAcceptor);
+        Pstream::scatterList(globalDonorAcceptor);
 
-//         scalar span = tree.bb().mag();
-//         scalar greatSpan = sqr(GREAT);
+        // Donor identification: search for donors for all processors
+        // using local donor regions
 
-        const labelList& curDonors =
-            oversetMesh_.region(donorRegions_[drI]).eligibleDonors();
+        // Create a list to record local donors.  Guess the size as
+        //  donorFraction of number of cells
+        DynamicList<donorAcceptor> localDonors
+        (
+            Foam::max(mesh_.nCells()/donorFraction(), 100)
+        );
 
-        // Search donor region with all unassigned cells
-        forAll (a, aI)
+        // Go through all donor regions and identify donor cells
+        forAll (dr, drI)
         {
-            if (d[aI] == -1)
+            if (dr[drI] == index())
             {
-                const vector& curCentre = cc[a[aI]];
+                FatalErrorIn
+                (
+                    "void oversetRegion::calcDonorAcceptorCells() const"
+                )   << "Region " << name() << " specified as the donor "
+                    << "of itself.  List of donors: " << dr << nl
+                    << "This is not allowed: check oversetMesh definition"
+                    << abort(FatalError);
+            }
 
-                // N-squared search - testing
+            // Get current donor region
+            const oversetRegion& curDonorRegion = regions[dr[drI]];
 
-                scalar minDistance = GREAT;
-                label dc = -1;
-                scalar magSqrDist;
+            const labelList& curDonors = regions[dr[drI]].eligibleDonors();
 
-                forAll (curDonors, donorI)
+            // Get donor region tree
+            const indexedOctree<treeDataCell>& tree =
+                curDonorRegion.cellSearch();
+
+            // If the tree is empty on local processor, do not search
+            if (tree.nodes().empty())
+            {
+                continue;
+            }
+
+            scalar span = tree.bb().mag();
+
+            // Go through all processors and see if local donor can be found
+
+            // For all acceptors, perform donor search
+            // Searching for donor cells on local processors using the
+            // requested acceptor data from all processors
+            forAll (globalDonorAcceptor, procI)
+            {
+                List<donorAcceptor>& curDA = globalDonorAcceptor[procI];
+
+                forAll (curDA, daI)
                 {
-                    magSqrDist = magSqr(cc[curDonors[donorI]] - curCentre);
-
-                    if (magSqrDist < minDistance)
+                    if (!curDA[daI].donorFound())
                     {
-                        dc = curDonors[donorI];
-                        minDistance = magSqrDist;
-                    }
-                }
+                        const vector& curP = curDA[daI].acceptorPoint();
 
-                // Check for point in cell
-                if (dc > -1)
-                {
-//                     if (mesh_.pointInCell(curCentre, dc))
-                    if (mesh_.pointInCellBB(curCentre, dc))
-                    {
-                        d[aI] = dc;
+                        // Find nearest cell with octree
+                        // Note: octree only contains eligible cells
+                        // HJ, 10/Jan/2015
+                        pointIndexHit pih = tree.findNearest(curP, span);
+
+                        if (pih.hit())
+                        {
+                            // Found a hit.  Additional check for point in cell
+                            if
+                            (
+                                mesh_.pointInCell
+//                                 mesh_.pointInCellBB
+                                (
+                                    curP,
+                                    curDonors[pih.index()]
+                                )
+                            )
+                            {
+                                // Identified local donor.  Set donor data
+                                // to let acceptor know about the match
+                                curDA[daI].setDonor
+                                (
+                                    curDonors[pih.index()],
+                                    Pstream::myProcNo()
+                                );
+
+                                // Record local donor data.  Note: acceptor
+                                // processor may be remote
+                                localDonors.append(curDA[daI]);
+
+                                // Note:
+                                // If the interpolation stencil requires
+                                // larger neighbourhood, additional donor cells
+                                // can be located and gathered here.
+                                // Issues arise if parts of the interpolation
+                                // stencil straddle the processor boundary
+                                // HJ, 19/Jun/2015
+                            }
+                        }
                     }
                 }
             }
         }
-    }
-    forAll (d, i)
-    {
-        if (d[i] == -1)
-        {
-            Info<< "Missing donor for cell " << a[i] << endl;
-        }
-    }
 
-    // Check for unpaired donors
-    if (!d.empty())
-    {
-        if (min(d) < 0)
+        // Gather-scatter acceptor data after donor search
+
+        // At this point, each processor has filled parts of every other
+        // processors's list.  Therefore, a simple gather-scatter will not do
+        // Algorithm:
+        // - send all processor data to master
+        // - master recombines
+        // - scatter to all processors
+        if (Pstream::master())
         {
-            FatalErrorIn("void oversetRegion::calcDonorCells() const")
-                << "Region " << index() << " has unmatched acceptors"
-                << abort(FatalError);
+            // Receive data from all processors and recombine
+            for (label procI = 1; procI < Pstream::nProcs(); procI++)
+            {
+                // Receive list from slave
+                IPstream fromSlave
+                (
+                    Pstream::blocking,
+                    procI
+                );
+
+                donorAcceptorListList otherDonorAcceptor(fromSlave);
+
+                // Perform recombination
+                // If slave has found the acceptor and recombined list
+                // did not, copy the data from the slave into the recombined
+                // list
+                // If two processors have found the acceptor, report error
+                forAll (globalDonorAcceptor, pI)
+                {
+                    // Get reference to recombined list
+                    donorAcceptorList& recombined =
+                        globalDonorAcceptor[pI];
+
+                    // Get reference to candidate list
+                    const donorAcceptorList& candidate =
+                        otherDonorAcceptor[pI];
+
+                    // Compare candidate with recombined list
+                    // If candidate has found the donor, record it in the
+                    // recombined list
+                    forAll (candidate, cI)
+                    {
+                        if
+                        (
+                            !recombined[cI].donorFound() 
+                         && candidate[cI].donorFound()
+                        )
+                        {
+                            // Candidate has found the donor
+                            // Record donor and donor processor
+                            recombined[cI].setDonor
+                            (
+                                candidate[cI].donorCell(),
+                                candidate[cI].donorProcNo()
+                            );
+                        }
+                        // Checking
+                        else if
+                        (
+                            recombined[cI].donorFound() 
+                         && candidate[cI].donorFound()
+                        )
+                        {
+                            if
+                            (
+                                (
+                                    recombined[cI].donorCell()
+                                 != candidate[cI].donorCell()
+                                )
+                             || (
+                                    recombined[cI].donorCell()
+                                 != candidate[cI].donorCell()
+                                )
+                            )
+                            {
+                                FatalErrorIn
+                                (
+                                    "void oversetRegion::"
+                                    "calcDonorAcceptorCells() const"
+                                )   << "Region " << name()
+                                    << ": Multiple parallel donor found: "
+                                    << recombined[cI] << nl
+                                    << candidate[cI]
+                                    << abort(FatalError);
+                            }
+                        }
+                    }
+                }
+            }
+
         }
+        else
+        {
+            // Slave processor: send global list to master
+            OPstream toMaster
+            (
+                Pstream::nonBlocking,
+                Pstream::masterNo()
+            );
+
+            toMaster << globalDonorAcceptor;
+        }
+
+        // Scatter recombined list to all processors
+        Pstream::scatter(globalDonorAcceptor);
+
+        // Check if donors have been found for all local acceptors
+        {
+            // Grab local acceptors
+            acceptorCellsPtr_ = new donorAcceptorList
+            (
+                globalDonorAcceptor[Pstream::myProcNo()]
+            );
+
+            donorAcceptorList& curDA = *acceptorCellsPtr_;
+
+            labelList nDonorsFromProc(Pstream::nProcs(), 0);
+
+            label nUncoveredAcceptors = 0;
+
+            forAll (curDA, daI)
+            {
+                if (!curDA[daI].donorFound())
+                {
+                    // Donor not found globally
+                    WarningIn
+                    (
+                        "void oversetRegion::calcDonorAcceptorCells() const"
+                    )   << "Donor not found for cell "
+                        << curDA[daI].acceptorCell() << " on processor "
+                        << curDA[daI].acceptorProcNo()
+                        << endl;
+
+                    nUncoveredAcceptors++;
+                }
+                else
+                {
+                    // Assemble donor statistics
+                    nDonorsFromProc[curDA[daI].donorProcNo()]++;
+                }
+            }
+
+//             Pout<< "Region " << index()
+//                 << " number of processor donors for " << curDA.size()
+//                 << " local acceptors per processor: " << nDonorsFromProc
+//                 << endl;
+
+            // Check for uncovered acceptors
+            if (nUncoveredAcceptors > 0)
+            {
+                FatalErrorIn
+                (
+                    "void oversetRegion::calcDonorAcceptorCells() const"
+                )   << "Inconsistency in donor cell data assembly"
+                    << abort(FatalError);
+            }
+
+            // Sanity check
+            if
+            (
+                nUncoveredAcceptors == 0
+             && sum(nDonorsFromProc) != curDA.size()
+            )
+            {
+                FatalErrorIn
+                (
+                    "void oversetRegion::calcDonorAcceptorCells() const"
+                )   << "Inconsistency in donor cell data assembly"
+                    << abort(FatalError);
+            }
+        }
+
+        donorCellsPtr_ = new donorAcceptorList();
+        donorAcceptorList& d = *donorCellsPtr_;
+
+        d.transfer(localDonors.shrink());
+
+        // Sanity check local donors
+        labelList nDonorsToProc(Pstream::nProcs(), 0);
+
+        forAll (d, dI)
+        {
+            // Assemble donor statistics
+            nDonorsToProc[d[dI].acceptorProcNo()]++;
+        }
+
+//         Pout<< "Region " << index()
+//             << " number of local donors = " << d.size()
+//             << " per processor: " << nDonorsToProc
+//             << endl;
+    }
+    else
+    {
+        // Serial run.  All donors and acceptors are local
+
+        // Note: in a serial run, donorCells and acceptorCells
+        // contain identical data.  This is duplicated for the moment
+        // HJ, 1/May/2015
+
+        acceptorCellsPtr_ = new donorAcceptorList(a.size());
+        donorAcceptorList& DA = *acceptorCellsPtr_;
+
+        // Insert local acceptors into the list
+        forAll (a, aI)
+        {
+            DA[aI] = donorAcceptor
+            (
+                a[aI],
+                Pstream::myProcNo(),
+                cc[a[aI]]
+            );
+        }
+
+        // Go through all donor regions and identify donor cells
+        forAll (dr, drI)
+        {
+            if (dr[drI] == index())
+            {
+                FatalErrorIn
+                (
+                    "void oversetRegion::calcDonorAcceptorCells() const"
+                )   << "Region " << index() << " specified as the donor "
+                    << "of itself.  List of donors: " << dr << nl
+                    << "This is not allowed: check oversetMesh definition"
+                    << abort(FatalError);
+            }
+
+            // Get current donor region
+            const oversetRegion& curDonorRegion = regions[dr[drI]];
+
+            const labelList& curDonors = regions[dr[drI]].eligibleDonors();
+
+            // Get donor region tree
+            const indexedOctree<treeDataCell>& tree =
+                curDonorRegion.cellSearch();
+
+            scalar span = tree.bb().mag();
+
+            forAll (DA, daI)
+            {
+                const vector& curP = DA[daI].acceptorPoint();
+
+                // Find nearest cell with octree
+                // Note: octree only contains eligible cells
+                // HJ, 10/Jan/2015
+                pointIndexHit pih = tree.findNearest(curP, span);
+
+                if (pih.hit())
+                {
+                    // Found a hit.  Additional check for point in cell
+                    if
+                    (
+                        mesh_.pointInCell
+//                         mesh_.pointInCellBB
+                        (
+                            curP,
+                            curDonors[pih.index()]
+                        )
+                    )
+                    {
+                        // Identified donor.  Set donor data
+                        // to let acceptor know about the match
+                        DA[daI].setDonor
+                        (
+                            curDonors[pih.index()],
+                            Pstream::myProcNo()
+                        );
+                    }
+                }
+            }
+        } // End of all donor regions
+
+        // Check if donors have been found for all local acceptors
+        {
+            label nUncoveredAcceptors = 0;
+
+            forAll (DA, daI)
+            {
+                if (!DA[daI].donorFound())
+                {
+                    // Donor not found =
+                    Info<< "Donor not found for cell "
+                        << DA[daI].acceptorCell()
+                        << endl;
+
+                    nUncoveredAcceptors++;
+                }
+            }
+
+            // Check for uncovered acceptors
+            if (nUncoveredAcceptors > 0)
+            {
+                FatalErrorIn
+                (
+                    "void oversetRegion::calcDonorAcceptorCells() const"
+                )   << "Inconsistency in donor cell data assembly"
+                    << abort(FatalError);
+            }
+        }
+
+        // Since in serial execution donor and acceptor data is identical
+        // copy the acceptor list into donor list after the search and check
+        // have been performed
+        donorCellsPtr_ = new donorAcceptorList(DA);
     }
 }
 
@@ -292,28 +635,12 @@ void Foam::oversetRegion::calcHoleCells() const
         holeMask[fringeHoles[i]] = true;
     }
 
-    // Go through all regions apart from the current and mark all hole cells
-    // using their hole boundary patch inside search
+    // Mark all hole cells using their hole boundary patch inside search
 
-    const label nRegions = oversetMesh_.split().nRegions();
-
-    for (label regionI = 0; regionI < nRegions; regionI++)
+    if (overset().holePatchesPresent())
     {
-        // Skip current region
-        if (regionI == index())
-        {
-            continue;
-        }
-
-        const oversetRegion& otherRegion = oversetMesh_.region(regionI);
-
-        if (!otherRegion.holePatchesPresent())
-        {
-            continue;
-        }
-
         // Get reference to hole search
-        const triSurfaceSearch& holeSearch = otherRegion.holeTriSurfSearch();
+        const triSurfaceSearch& holeSearch = overset().holeSearch();
 
         boolList regionInside = holeSearch.calcInside(localC);
 
@@ -323,32 +650,38 @@ void Foam::oversetRegion::calcHoleCells() const
         {
             holeMask[rc[i]] |= regionInside[i];
         }
-    }
 
-    // Count hole cells
-    label nHoleCells = 0;
+        // Count hole cells
+        label nHoleCells = 0;
 
-    forAll (rc, i)
-    {
-        if (holeMask[rc[i]])
+        forAll (rc, i)
         {
-            nHoleCells++;
+            if (holeMask[rc[i]])
+            {
+                nHoleCells++;
+            }
+        }
+
+        // Allocate hole cells storage
+        holeCellsPtr_ = new labelList(nHoleCells);
+        labelList& ch = *holeCellsPtr_;
+
+        // Reset counter and collect hole cells
+        nHoleCells = 0;
+
+        forAll (rc, i)
+        {
+            if (holeMask[rc[i]])
+            {
+                ch[nHoleCells] = rc[i];
+                nHoleCells++;
+            }
         }
     }
-
-    holeCellsPtr_ = new labelList(nHoleCells);
-    labelList& ch = *holeCellsPtr_;
-
-    // Reset counter and collect hole cells
-    nHoleCells = 0;
-
-    forAll (rc, i)
+    else
     {
-        if (holeMask[rc[i]])
-        {
-            ch[nHoleCells] = rc[i];
-            nHoleCells++;
-        }
+        // No hole search = no holes
+        holeCellsPtr_ = new labelList();
     }
 }
 
@@ -381,8 +714,8 @@ void Foam::oversetRegion::calcEligibleDonorCells() const
         donorMask[hc[hcI]] = false;
     }
 
-    // Remove all acceptor cells from region
-    const labelList& ac = acceptors();
+    // Remove all acceptor cells from fringe
+    const labelList& ac = fringePtr_().acceptors();
 
     forAll (ac, acI)
     {
@@ -405,6 +738,7 @@ void Foam::oversetRegion::calcEligibleDonorCells() const
 
     // Reset counter and collect cells
     nEligibleDonors = 0;
+
     forAll (donorMask, cellI)
     {
         if (donorMask[cellI])
@@ -416,11 +750,11 @@ void Foam::oversetRegion::calcEligibleDonorCells() const
 }
 
 
-void Foam::oversetRegion::calcCellTree() const
+void Foam::oversetRegion::calcCellSearch() const
 {
-    if (cellTreePtr_)
+    if (cellSearchPtr_)
     {
-        FatalErrorIn("void oversetRegion::calcCellTree() const")
+        FatalErrorIn("void oversetRegion::calcCellSearch() const")
             << "Cell tree already calculated"
             << abort(FatalError);
     }
@@ -435,13 +769,14 @@ void Foam::oversetRegion::calcCellTree() const
     overallBb.min() -= point(ROOTVSMALL, ROOTVSMALL, ROOTVSMALL);
     overallBb.max() += point(ROOTVSMALL, ROOTVSMALL, ROOTVSMALL);
 
-    cellTreePtr_ = new indexedOctree<treeDataCell>
+    // Search
+    cellSearchPtr_ = new indexedOctree<treeDataCell>
     (
         treeDataCell
         (
             false,  //  Cache bb.  Reconsider for moving mesh cases
             mesh_,
-            regionCells()
+            eligibleDonors()
         ),
         overallBb,  // overall search domain
         8,          // maxLevel
@@ -453,7 +788,7 @@ void Foam::oversetRegion::calcCellTree() const
 
 void Foam::oversetRegion::clearOut()
 {
-    deleteDemandDrivenData(regionCellsPtr_);
+    deleteDemandDrivenData(donorRegionsPtr_);
     deleteDemandDrivenData(acceptorRegionsPtr_);
 
     deleteDemandDrivenData(acceptorCellsPtr_);
@@ -461,10 +796,7 @@ void Foam::oversetRegion::clearOut()
     deleteDemandDrivenData(holeCellsPtr_);
     deleteDemandDrivenData(eligibleDonorCellsPtr_);
 
-    deleteDemandDrivenData(holePatchesPresentPtr_);
-    deleteDemandDrivenData(holeTriMeshPtr_);
-    deleteDemandDrivenData(triSurfSearchPtr_);
-    deleteDemandDrivenData(cellTreePtr_);
+    deleteDemandDrivenData(cellSearchPtr_);
 }
 
 
@@ -472,18 +804,21 @@ void Foam::oversetRegion::clearOut()
 
 Foam::oversetRegion::oversetRegion
 (
+    const word& name,
+    const label index,
     const fvMesh& mesh,
     const oversetMesh& oversetMesh,
     const dictionary& dict
 )
 :
+    name_(name),
+    index_(index),
     mesh_(mesh),
     oversetMesh_(oversetMesh),
-    index_(readLabel(dict.lookup("index"))),
-    donorRegions_(dict.lookup("donorRegions")),
-    holePatchNames_(dict.lookup("holePatches")),
+    zoneIndex_(mesh_.cellZones().findZoneID(name_)),
+    donorRegionNames_(dict.lookup("donorRegions")),
     fringePtr_(),
-    regionCellsPtr_(NULL),
+    donorRegionsPtr_(NULL),
     acceptorRegionsPtr_(NULL),
 
     acceptorCellsPtr_(NULL),
@@ -491,11 +826,25 @@ Foam::oversetRegion::oversetRegion
     holeCellsPtr_(NULL),
     eligibleDonorCellsPtr_(NULL),
 
-    holePatchesPresentPtr_(NULL),
-    holeTriMeshPtr_(NULL),
-    triSurfSearchPtr_(NULL),
-    cellTreePtr_(NULL)
+    cellSearchPtr_(NULL)
 {
+    // Check zone index
+    if (zoneIndex_ < 0)
+    {
+        FatalErrorIn
+        (
+            "oversetRegion::oversetRegion\n"
+            "(\n"
+            "    const word& name,\n"
+            "    const fvMesh& mesh,\n"
+            "    const oversetMesh& oversetMesh,\n"
+            "    const dictionary& dict\n"
+            ")"
+        )   << "Cannot find cell zone for region " << name << nl
+            << "Available cell zones: " << mesh_.cellZones().names()
+            << abort(FatalError);
+    }
+
     fringePtr_ = oversetFringe::New
     (
         mesh,
@@ -517,12 +866,18 @@ Foam::oversetRegion::~oversetRegion()
 
 const Foam::labelList& Foam::oversetRegion::regionCells() const
 {
-    if (!regionCellsPtr_)
+    return mesh_.cellZones()[zoneIndex_];
+}
+
+
+const Foam::labelList& Foam::oversetRegion::donorRegions() const
+{
+    if (!donorRegionsPtr_)
     {
-        calcRegionCells();
+        calcDonorRegions();
     }
 
-    return *regionCellsPtr_;
+    return *donorRegionsPtr_;
 }
 
 
@@ -537,22 +892,22 @@ const Foam::labelList& Foam::oversetRegion::acceptorRegions() const
 }
 
 
-const  Foam::labelList& Foam::oversetRegion::acceptors() const
+const Foam::donorAcceptorList& Foam::oversetRegion::acceptors() const
 {
     if (!acceptorCellsPtr_)
     {
-        calcAcceptorCells();
+        calcDonorAcceptorCells();
     }
 
     return *acceptorCellsPtr_;
 }
 
 
-const  Foam::labelList& Foam::oversetRegion::donors() const
+const Foam::donorAcceptorList& Foam::oversetRegion::donors() const
 {
     if (!donorCellsPtr_)
     {
-        calcDonorCells();
+        calcDonorAcceptorCells();
     }
 
     return *donorCellsPtr_;
@@ -580,158 +935,15 @@ const Foam::labelList& Foam::oversetRegion::eligibleDonors() const
     return *eligibleDonorCellsPtr_;
 }
 
-bool Foam::oversetRegion::holePatchesPresent() const
-{
-    // Check if holeTriMesh has been created and if not force it
-    if (!holePatchesPresentPtr_)
-    {
-        // Collect all hole patches and make a triangular surface
-        labelHashSet holePatches;
-
-        forAll (holePatchNames_, nameI)
-        {
-            polyPatchID curHolePatch
-            (
-                holePatchNames_[nameI],
-                mesh().boundaryMesh()
-            );
-
-            if (curHolePatch.active())
-            {
-                // If the patch has zero size, do not insert it
-                // Parallel cutting bug.  HJ, 17/Apr/2014
-                if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
-                {
-                    holePatches.insert(curHolePatch.index());
-                }
-            }
-        }
-
-        // Check if any hole patches are detected
-        // Note: requires parallel update
-        if (holePatches.empty())
-        {
-            holePatchesPresentPtr_ = new bool(false);
-        }
-        else
-        {
-            holePatchesPresentPtr_ = new bool(true);
-        }
-    }
-
-    return *holePatchesPresentPtr_;
-}
-
-
-const Foam::triSurfaceMesh& Foam::oversetRegion::holeTriMesh() const
-{
-    if (!holeTriMeshPtr_)
-    {
-        // Collect all hole patches and make a triangular surface
-        labelHashSet holePatches;
-
-        forAll (holePatchNames_, nameI)
-        {
-            polyPatchID curHolePatch
-            (
-                holePatchNames_[nameI],
-                mesh().boundaryMesh()
-            );
-
-            if (curHolePatch.active())
-            {
-                // If the patch has zero size, do not insert it
-                // Parallel cutting bug.  HJ, 17/Apr/2014
-                if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
-                {
-                    holePatches.insert(curHolePatch.index());
-                }
-            }
-            else
-            {
-                FatalErrorIn
-                (
-                    "const triSurfaceMesh& oversetRegion::holeTriMesh() const"
-                )   << "Patch "  << holePatchNames_[nameI]
-                    << " cannot be found.  Available patch names: "
-                    << mesh().boundaryMesh().names()
-                    << abort(FatalError);
-            }
-        }
-
-        if (holePatches.empty())
-        {
-            FatalErrorIn
-            (
-                "const triSurfaceMesh& oversetRegion::holeTriMesh() const"
-            )   << "No hole patches detected: cannot perform hole cutting"
-                << abort(FatalError);
-        }
-
-        triSurface ts = triSurfaceTools::triangulate
-        (
-            mesh().boundaryMesh(),
-            holePatches
-        );
-
-        // Invert faces
-        triFaceList invertedFaces(ts.size());
-
-        forAll (ts, tsI)
-        {
-            invertedFaces[tsI] = ts[tsI].reverseFace();
-        }
-
-        triSurface invertedTs
-        (
-            invertedFaces,
-            ts.points()
-        );
-
-//         invertedTs.write(mesh().time().caseName() + ".stl");
-
-        holeTriMeshPtr_ = new triSurfaceMesh
-        (
-            IOobject
-            (
-                "oversetMeshTri.ftr",
-                mesh().time().constant(),  // instance
-                "triSurface",              // local
-                mesh(),                    // registry
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            invertedTs
-        );
-    }
-
-    return *holeTriMeshPtr_;
-}
-
-
-const Foam::triSurfaceSearch& Foam::oversetRegion::holeTriSurfSearch() const
-{
-    if (!triSurfSearchPtr_)
-    {
-        triSurfSearchPtr_ = new triSurfaceSearch
-        (
-            holeTriMesh()
-        );
-    }
-
-    return *triSurfSearchPtr_;
-}
-
-
 const Foam::indexedOctree<Foam::treeDataCell>&
-Foam::oversetRegion::cellTree() const
+Foam::oversetRegion::cellSearch() const
 {
-    if (!cellTreePtr_)
+    if (!cellSearchPtr_)
     {
-        calcCellTree();
+        calcCellSearch();
     }
 
-    return *cellTreePtr_;
+    return *cellSearchPtr_;
 }
 
 

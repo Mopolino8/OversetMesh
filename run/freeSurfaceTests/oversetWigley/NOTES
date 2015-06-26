@@ -1,0 +1,8 @@
+189k hull cellRegion1
+272k background  cellRegion0
+
+hull mesh x = 0 - 1;
+
+fringe radii 0.3 to 0.34, x axis, y radial
+
+

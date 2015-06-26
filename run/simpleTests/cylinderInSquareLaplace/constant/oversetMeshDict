@@ -16,6 +16,7 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+holePatches  ( cylinder );
 
 interpolation
 {
@@ -30,9 +31,6 @@ regions
 
         // Donor regions
         donorRegions ( 1 );
-
-        // Names or patches that determine hole cells
-        holePatches ();
 
         fringe
         {
@@ -54,8 +52,6 @@ regions
         index 1;
 
         donorRegions ( 0 );
-
-        holePatches  ( cylinder );
 
         fringe
         {

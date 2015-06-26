@@ -1,0 +1,104 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open Source CFD        |
+|  \\    /   O peration     | Version:  1.6-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    pd
+    {
+        solver           BiCGStab;
+        preconditioner   DILU;
+
+//         solver           PCG;
+//         preconditioner   DIC;
+
+        minIter          0;
+        maxIter          1000;
+        tolerance        1e-08;
+        relTol           0.01;
+    }
+
+    "(p|pdFinal)"
+    {
+        solver           BiCGStab;
+        preconditioner   DILU;
+
+//         solver           PCG;
+//         preconditioner   DIC;
+
+        minIter          0;
+        maxIter          1000;
+        tolerance        1e-08;
+        relTol           0.0;
+    }
+
+    U
+    {
+        solver           BiCGStab;
+        preconditioner   DILU;
+
+        minIter          1;
+        maxIter          100;
+        tolerance        1e-08;
+        relTol           0;
+    }
+
+    alpha1
+    {
+        solver           BiCGStab;
+        preconditioner   DILU;
+
+        minIter          1;
+        maxIter          100;
+        tolerance        1e-08;
+        relTol           0;
+    }
+}
+
+PISO
+{
+    cAlpha          1;
+}
+
+// potentialOversetFoam
+SIMPLE
+{
+    pRefPoint        (3.4 -1.9 1.9);
+    pRefValue        0;
+
+    nNonOrthogonalCorrectors 2;
+}
+
+PIMPLE
+{
+    nOuterCorrectors 1;
+    nCorrectors      4;
+    nNonOrthogonalCorrectors 0;
+
+    pdRefPoint        (3.4 -1.9 1.9);
+    pdRefValue        0;
+
+    limitMagU        3;
+}
+
+relaxationFactors
+{
+    U          0.8;
+    alpha1     0.8;
+    pd         0.7;
+}
+
+
+// ************************************************************************* //

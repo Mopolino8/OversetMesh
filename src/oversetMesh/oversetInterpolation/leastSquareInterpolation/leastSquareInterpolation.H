@@ -106,8 +106,11 @@ public:
 
     // Member Functions
 
+            //- Return interpolation local donor list
+            virtual const labelList& localDonors() const;
+
             //- Return interpolation donor list
-            virtual const labelList& donors() const;
+            virtual const labelList& remoteDonors() const;
 
             //- Return acceptor addressing
             virtual const labelListList& addressing() const;

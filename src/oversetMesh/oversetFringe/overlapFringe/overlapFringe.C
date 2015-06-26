@@ -71,57 +71,35 @@ void Foam::overlapFringe::calcAddressing() const
     // Get cell centres
     const vectorField& cc = mesh.cellCentres();
 
-    // Allocate storage for holes and acceptors
-    holesPtr_ = new labelList(masterCells.size());
-    labelList& masterHoles = *holesPtr_;
-    label nMasterHoles = 0;
+    // Make a hash set to collect acceptor points
+    labelHashSet acceptorSet;
 
-    acceptorsPtr_ = new labelList(masterCells.size());
-    labelList& masterAcceptors = *acceptorsPtr_;
-    label nMasterAcceptors = 0;
+    // Make a hash set to collect hole points
+    labelHashSet holeSet;
 
     forAll (donorRegions, regionI)
     {
         // Get reference to current donor region
         const oversetRegion& curDonorRegion =
-            region().overset().region(donorRegions[regionI]);
+            region().overset().regions()[donorRegions[regionI]];
 
-        // Mark eligible cells from current donor region
-        const labelList& rc = curDonorRegion.regionCells();
+            const labelList& curDonors = curDonorRegion.eligibleDonors();
 
-        // Prepare donor mask for donor region cells
-        boolList donorMask(mesh.nCells(), false);
+        // Get donor tree
+        const indexedOctree<treeDataCell>& tree =
+            curDonorRegion.cellSearch();
 
-        // Prepare hole mask for donor region cells
-        boolList holeMask(mesh.nCells(), false);
+        // NOTE: PARALLELISATION MISSING
+        // Overlap search should be performed on all processors
+        // HJ: ToDo
 
-        // Mark region cells as eligible
-        forAll (rc, rcI)
+        // If the tree is empty on local processor, do not search
+        if (tree.nodes().empty())
         {
-            donorMask[rc[rcI]] = true;
+            continue;
         }
 
-        // Remove all hole cells from region
-        const labelList& hc = curDonorRegion.holes();
-
-        forAll (hc, hcI)
-        {
-            donorMask[hc[hcI]] = false;
-            holeMask[hc[hcI]] = true;
-        }
-
-        // Remove all acceptor cells from region
-        const labelList& ac = curDonorRegion.acceptors();
-
-        forAll (ac, acI)
-        {
-            donorMask[ac[acI]] = false;
-        }
-
-        // End of preparation of current donor region
-
-        // Get donor search
-//         const holeTriSurfSearch& donorTree = curDonorRegion.cellTree();
+        scalar span = tree.bb().mag();
 
         // Go through all master cells and find the nearest cell in the current
         // donor region
@@ -130,55 +108,31 @@ void Foam::overlapFringe::calcAddressing() const
             const label& curCell = masterCells[mcI];
             const vector& curCentre = cc[curCell];
 
-            // Find nearest hole cell in the current master region
+            // Find nearest cell in the current master region
+            pointIndexHit pih = tree.findNearest(curCentre, span);
 
-                // N-squared search - testing
-
-            scalar minDistance = GREAT;
-            label nearest = -1;
-            scalar magSqrDist;
-
-            forAll (rc, rcI)
+            if (pih.hit())
             {
-                magSqrDist = magSqr(cc[rc[rcI]] - curCentre);
-
-                if (magSqrDist < minDistance)
+                if (mesh.pointInCell(curCentre, curDonors[pih.index()]))
                 {
-                    nearest = rc[rcI];
-                    minDistance = magSqrDist;
-                }
-            }
-
-            // Check for point in cell
-            if (nearest > -1)
-            {
-//                 if (mesh.pointInCell(curCentre, nearest))
-                if (mesh.pointInCellBB(curCentre, nearest))
-                {
-                    // Found nearest cell in donor region
-
-                    if (holeMask[nearest])
-                    {
-                        // If nearest cell is a hole, master cell is also
-                        // a hole
-                        masterHoles[nMasterHoles] = curCell;
-                        nMasterHoles++;
-                    }
-                    else if (donorMask[nearest])
-                    {
-                        // If nearest cell is a donor, master cell is
-                        // acceptor
-                        masterAcceptors[nMasterAcceptors] = curCell;
-                        nMasterAcceptors++;
-                    }
+                    // Found nearest cell in donor region.  This is a
+                    // potential acceptor cell
+                    acceptorSet.insert(curCell);
                 }
             }
         }
     }
 
-    // Resize hole and acceptor lists
-    masterAcceptors.setSize(nMasterAcceptors);
-    masterHoles.setSize(nMasterHoles);
+    // Collected all overlap donor cells
+
+    // Note: add fringe minimisation here
+    // HJ, 20/Jun/2015
+
+    // Collect holes
+    holesPtr_ = new labelList(holeSet.sortedToc());
+
+    // Collect acceptors
+    acceptorsPtr_ = new labelList(acceptorSet.sortedToc());
 }
 
 
@@ -240,6 +194,7 @@ const Foam::labelList& Foam::overlapFringe::acceptors() const
 void Foam::overlapFringe::update()
 {
     Info<< "overlapFringe::update()" << endl;
+    clearAddressing();
 }
 
 

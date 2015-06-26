@@ -46,7 +46,6 @@ SourceFiles
 #include "dictionary.H"
 #include "fvMesh.H"
 #include "oversetRegion.H"
-#include "regionSplit.H"
 #include "oversetInterpolation.H"
 #include "fvMatrices.H"
 
@@ -83,16 +82,27 @@ private:
         //- Coefficient dictionary
         IOdictionary dict_;
 
-        //- Fringe selection algorithm for each region
+        //- List of overset regions
         PtrList<oversetRegion> regions_;
+
+        //- Hole patch names
+        wordList holePatchNames_;
 
 
     // Demand-driven data
 
-        // Cell clasification
+        // Hole cutting
 
-            //- Region split
-            mutable regionSplit* splitPtr_;
+            //- Hole patches as a triangular surface
+            mutable triSurface* holeTriMeshPtr_;
+
+            //- Triangular hole surface search algorithm.  Contains complete
+            //  cutting surface
+            //  Used in hole cutting
+            mutable triSurfaceSearch* holeSearchPtr_;
+
+
+        // Cell clasification
 
             //- Acceptor cell labels
             mutable labelList* acceptorCellsPtr_;
@@ -109,8 +119,8 @@ private:
             //- Return overset type indicator field
             mutable volScalarField* oversetTypesPtr_;
 
-            //- Region ID field
-            mutable volScalarField* regionIDPtr_;
+            //- Region ID: region index for each cell
+            mutable labelList* regionIDPtr_;
 
 
         // Overset discretisation support
@@ -156,16 +166,45 @@ private:
             mutable labelList* acceptorInternalFacesPtr_;
 
 
-        // Interpolation
+        // Interpolation addressing
 
-            //- Acceptor-donor addressing: donor cell index for each acceptor
-            mutable labelList* fringeAddressingPtr_;
+            //- Local donors cells: cells where the donor is on the
+            //  same processor as the acceptor
+            mutable labelList* localDonorsPtr_;
+
+            //- Local donors addressing: acceptor index for each
+           //  local donor
+            mutable labelList* localDonorAddrPtr_;
+
+            //- Remote donors cells: a local donor cell for which the
+            //  acceptor is on a remote processor
+            mutable labelList* remoteDonorsPtr_;
+
+            //- Remote acceptor addressing: local acceptor cell where the
+            //  donor is on a remote processor
+            mutable labelList* remoteAcceptorAddrPtr_;
+
+
+            // Master processor data re-mapping addressing
+            // This data exists only on master processor
+
+                //- Parallel data information processor addressing
+                //  For each global acceptor, record donor processor index
+                mutable labelListList* globalAcceptFromProcPtr_;
+
+                //- Parallel data information cell addressing
+                //  For each global acceptor, record donor cell index
+                mutable labelListList* globalAcceptFromCellPtr_;
+
 
             //- Overset interpolation
             mutable oversetInterpolation* interpolationPtr_;
 
 
     // Private member functions
+
+        //- Prepare hole triangular mesh
+        void calcHoleTriMesh() const;
 
         //- Calculate cell classification
         void calcCellClassification() const;
@@ -182,8 +221,8 @@ private:
         //- Calculate hole faces
         void calcHoleFaces() const;
 
-        //- Calculate fringe interpolation addressing
-        void calcFringeAddressing() const;
+        //- Calculate parallel fringe interpolation addressing
+        void calcParallelAddressing() const;
 
 
         // Storage management
@@ -216,15 +255,23 @@ public:
 
     // Member functions
 
-        // Search functionality
+        //- Return list of overset regions
+        const PtrList<oversetRegion>& regions() const
+        {
+            return regions_;
+        }
 
-            //- Return region split
-            const regionSplit& split() const;
 
-            //- Return overset region given its index
-            //  Note: overset region index does not correspond to
-            //  its position in the list, but its label in the region split
-            const oversetRegion& region(const label index) const;
+        // Hole cutting search functionality
+
+            //- Are hole patches present?
+            bool holePatchesPresent() const;
+
+            //- Hole triangular surface
+            const triSurface& holeTriMesh() const;
+
+            //- Return triangular surface search object for hole patches
+            const triSurfaceSearch& holeSearch() const;
 
 
         // Cell clasification
@@ -245,8 +292,8 @@ public:
             //  2 = acceptor
             const volScalarField& oversetTypes() const;
 
-            //- Return region indicator field
-            const volScalarField& regionID() const;
+            //- Return region indicator
+            const labelList& regionID() const;
 
 
         // Overset discretisation support
@@ -295,28 +342,37 @@ public:
 
         // Fringe and interpolation
 
-           //- Return acceptor-donor addressing:
-           //  donor cell index for each acceptor
-           const labelList& fringeAddressing() const;
+           //- Return local donor cells: cells where donor and
+           //  acceptor are on the same processor
+           const labelList& localDonors() const;
+
+           //- Return local donor addressing: acceptor index for each
+           //  local donor
+           const labelList& localDonorAddr() const;
+
+           //- Return remote donor cells: cells where the donor is local
+           //  and acceptor is on a remote processor
+           const labelList& remoteDonors() const;
+
+           //- Return remote acceptor addressing: local acceptor index
+           //  for which donor is on a remote processor
+           const labelList& remoteAcceptorAddr() const;
+
+
+            // Master processor data re-mapping addressing
+            // This data exists only on master processor
+
+                //- Parallel data information processor addressing
+                //  For each global acceptor, record donor processor index
+               const labelListList& globalAcceptFromProc() const;
+
+                //- Parallel data information cell addressing
+                //  For each global acceptor, record donor cell index
+                const labelListList& globalAcceptFromCell() const;
+    
 
             //- Return interpolation
             const oversetInterpolation& interpolation() const;
-
-            //- Collect donor cells from field
-            template<class Type>
-            void filterDonors
-            (
-                Field<Type>& donorField,
-                const Field<Type>& cellField
-            ) const;
-
-            //- Interpolate to acceptor cells given donor field
-            template<class Type>
-            void donorToAcceptor
-            (
-                Field<Type>& fringeField,
-                const Field<Type>& donorField
-            ) const;
 
             //- Interpolate to acceptors
             template<class Type>
@@ -334,13 +390,6 @@ public:
                 const Field<Type>& cellField
             ) const;
 
-
-            //- Return flux
-            template<class Type>
-            tmp<GeometricField<Type, fvsPatchField, surfaceMesh> > flux
-            (
-                const fvMatrix<Type>& m
-            ) const;
 
 
         // Mesh object update functions

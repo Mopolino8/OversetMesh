@@ -28,6 +28,17 @@ Class
 Description
     Overset mesh region
 
+    Overset region:
+    - collects its cells by cell zone
+    - contains list of donor regions
+    - contains list of patch names used to define a hole (walls)
+    - contains the fringe selection algorithm
+
+    Overset region provides data on
+    - cells within region (local processor)
+    - local acceptor and hole cells
+    - eligible local donors: cells that are neither acceptors nor holes
+
 SourceFiles
     oversetRegion.C
 
@@ -37,11 +48,13 @@ SourceFiles
 #define oversetRegion_H
 
 #include "fvMesh.H"
+#include "donorAcceptorList.H"
 #include "triSurfaceMesh.H"
 #include "triSurfaceTools.H"
 #include "triSurfaceSearch.H"
 #include "indexedOctree.H"
 #include "treeDataCell.H"
+#include "optimisationSwitch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,12 +65,18 @@ class oversetMesh;
 class oversetFringe;
 
 /*---------------------------------------------------------------------------*\
-                      Class oversetRegion Declaration
+                        Class oversetRegion Declaration
 \*---------------------------------------------------------------------------*/
 
 class oversetRegion
 {
     // Private data
+
+        //- Overset region name and cell zone name
+        const word name_;
+
+        //- Overset region index
+        const label index_;
 
         //- Mesh reference
         const fvMesh& mesh_;
@@ -65,15 +84,12 @@ class oversetRegion
         //- Overset mesh reference
         const oversetMesh& oversetMesh_;
 
-        //- Value of region split index for this region
-        label index_;
+        //- Cell zone index
+        const label zoneIndex_;
 
-        //- List of region indices that provide donors
+        //- List of region names that provide donors
         //  Note: ordering is important as it defines precedence
-        labelList donorRegions_;
-
-        //- Hole patch names
-        wordList holePatchNames_;
+        wordList donorRegionNames_;
 
         //- Fringe selection algorithm
         autoPtr<oversetFringe> fringePtr_;
@@ -81,18 +97,19 @@ class oversetRegion
 
     // Demand-driven data
 
-        //- Region cell labels
-        mutable labelList* regionCellsPtr_;
+        //- List of region indices that provide donors
+        //  Note: ordering is important as it defines precedence
+        mutable labelList* donorRegionsPtr_;
 
         //- Acceptor region labels
         mutable labelList* acceptorRegionsPtr_;
 
-        //- Acceptor cell labels
-        mutable labelList* acceptorCellsPtr_;
+        //- Acceptor cell data
+        mutable donorAcceptorList* acceptorCellsPtr_;
 
-        //- Donor cell labels.  Donor cell is defined as the nearest cell in
+        //- Donor cell data.  Donor cell is defined as the nearest cell in
         //  donor regions to the acceptor cell
-        mutable labelList* donorCellsPtr_;
+        mutable donorAcceptorList* donorCellsPtr_;
 
         //- Hole cell labels
         mutable labelList* holeCellsPtr_;
@@ -104,17 +121,14 @@ class oversetRegion
 
         // Search tools
 
-            //- Are hole patches present
-            mutable bool* holePatchesPresentPtr_;
-
-            //- Hole patches as a triangular surface
-            mutable triSurfaceMesh* holeTriMeshPtr_;
-
-            //- Triangular surface search algorithm
-            mutable triSurfaceSearch* triSurfSearchPtr_;
-
             //- Cell octree for search in local region
-            mutable indexedOctree<treeDataCell>* cellTreePtr_;
+            //  Used in donor cell search
+            mutable indexedOctree<treeDataCell>* cellSearchPtr_;
+
+
+        //- Donor fill-in.  One in donorFraction cells is expected to be
+        //  a donor
+        static const debug::optimisationSwitch donorFraction;
 
 
     // Private Member Functions
@@ -126,17 +140,14 @@ class oversetRegion
         void operator=(const oversetRegion&);
 
 
-        // Calculate region cells
-        void calcRegionCells() const;
+        // Calculate donor regions
+        void calcDonorRegions() const;
 
         // Calculate acceptor regions
         void calcAcceptorRegions() const;
 
-        // Calculate acceptor cells
-        void calcAcceptorCells() const;
-
-        // Calculate donor cells
-        void calcDonorCells() const;
+        // Calculate donor and acceptor cells
+        void calcDonorAcceptorCells() const;
 
         // Calculate hole cells
         void calcHoleCells() const;
@@ -145,7 +156,7 @@ class oversetRegion
         void calcEligibleDonorCells() const;
 
         // Calculate cell octree
-        void calcCellTree() const;
+        void calcCellSearch() const;
 
         // Clear all data
         void clearOut();
@@ -158,6 +169,8 @@ public:
         //- Construct from dictionary
         oversetRegion
         (
+            const word& name,
+            const label index,
             const fvMesh& mesh,
             const oversetMesh& oversetMesh,
             const dictionary& dict
@@ -172,6 +185,18 @@ public:
 
         // Access
 
+            //- Return region name and cell zone name
+            const word& name() const
+            {
+                return name_;
+            }
+
+            //- Return region index
+            label index() const
+            {
+                return index_;
+            }
+
             //- Return mesh reference
             const fvMesh& mesh() const
             {
@@ -184,17 +209,20 @@ public:
                 return oversetMesh_;
             }
 
-            //- Return region index as given by regionSplit
-            label index() const
+            //- Return region cell zone index
+            label zoneIndex() const
             {
-                return index_;
+                return zoneIndex_;
+            }
+
+            //- Return region cell zone
+            const cellZone& zone() const
+            {
+                return mesh_.cellZones()[zoneIndex()];
             }
 
             //- Return list of donor region indices
-            const labelList& donorRegions() const
-            {
-                return donorRegions_;
-            }
+            const labelList& donorRegions() const;
 
             //- Return list of acceptor region indices
             const labelList& acceptorRegions() const;
@@ -206,10 +234,10 @@ public:
         // Donor-acceptor addressing
 
             //- Return acceptor cell list
-            const labelList& acceptors() const;
+            const donorAcceptorList& acceptors() const;
 
-            //- Return  donor cell list
-            const labelList& donors() const;
+            //- Return donor cell list
+            const donorAcceptorList& donors() const;
 
             //- Return hole cell list
             const labelList& holes() const;
@@ -220,17 +248,9 @@ public:
 
         // Search functionality
 
-            //- Are hole patches present?
-            bool holePatchesPresent() const;
-
-            //- Hole triangular surface
-            const triSurfaceMesh& holeTriMesh() const;
-
-            //- Return triangular surface search object for hole patches
-            const triSurfaceSearch& holeTriSurfSearch() const;
-
             //- Return cell octree for search in local region
-            const indexedOctree<treeDataCell>& cellTree() const;
+            //  Only eligible donors are added to the list
+            const indexedOctree<treeDataCell>& cellSearch() const;
 };
 
 

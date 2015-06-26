@@ -33,7 +33,7 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(oversetMesh, 0);
+    defineTypeNameAndDebug(oversetMesh, 2);
 }
 
 
@@ -54,8 +54,11 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
         )
     ),
     regions_(),
+    holePatchNames_(dict_.lookup("holePatches")),
 
-    splitPtr_(NULL),
+    holeTriMeshPtr_(NULL),
+    holeSearchPtr_(NULL),
+
     acceptorCellsPtr_(NULL),
     donorCellsPtr_(NULL),
     holeCellsPtr_(NULL),
@@ -76,94 +79,50 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
     holeInternalFacesPtr_(NULL),
     acceptorInternalFacesPtr_(NULL),
 
-    fringeAddressingPtr_(NULL),
+    localDonorsPtr_(NULL),
+    localDonorAddrPtr_(NULL),
+    remoteDonorsPtr_(NULL),
+    remoteAcceptorAddrPtr_(NULL),
+    globalAcceptFromProcPtr_(NULL),
+    globalAcceptFromCellPtr_(NULL),
     interpolationPtr_(NULL)
 {
     Info << "Creating oversetMesh" << endl;
 
     // Read regions
-    List<dictionary> regionDicts(dict_.lookup("regions"));
+    PtrList<entry> regionEntries(dict_.lookup("regions"));
 
-    regions_.setSize(regionDicts.size());
-
-    forAll (regionDicts, dictI)
+    regions_.setSize(regionEntries.size()); 
+    forAll (regionEntries, regionI)
     {
         regions_.set
         (
-            dictI,
+            regionI,
             new oversetRegion
             (
+                regionEntries[regionI].keyword(),
+                regionI,
                 mesh,
                 *this,
-                regionDicts[dictI]
+                regionEntries[regionI].dict()
             )
         );
     }
+
+    // Check for duplicate region names
+    // TODO: HJ
 }
 
 
 // * * * * * * * * * * * * * * * * Destructor * * * * * * * * * * * * * * * //
 
 Foam::oversetMesh::~oversetMesh()
-{}
+{
+    clearOut();
+}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-const Foam::regionSplit& Foam::oversetMesh::split() const
-{
-    if (!splitPtr_)
-    {
-        splitPtr_ = new regionSplit(mesh());
-
-        // Check setup of regions
-        if (splitPtr_->nRegions() != regions_.size())
-        {
-            FatalErrorIn
-            (
-                "const regionSplit& oversetMesh::split() const"
-            )   << "Number of regions defined by oversetMesh does not "
-                << "match the region split." << nl
-                << "nRegions = " << regions_.size()
-                << " split = " << splitPtr_->nRegions()
-                << abort(FatalError);
-        }
-    }
-
-    return *splitPtr_;
-}
-
-
-const Foam::oversetRegion& Foam::oversetMesh::region
-(
-    const label index
-) const
-{
-    if (index < 0 || index >= split().nRegions())
-    {
-        FatalErrorIn("const oversetRegion& Foam::oversetMesh::region")
-            << "Invalid index: should be between 0 and "
-            << split().nRegions()
-            << abort(FatalError);
-    }
-
-    forAll (regions_, rI)
-    {
-        if (regions_[rI].index() == index)
-        {
-            return regions_[rI];
-        }
-    }
-
-    FatalErrorIn("const oversetRegion& Foam::oversetMesh::region")
-        << "Cannot find region index "
-        << split().nRegions()
-        << abort(FatalError);
-
-    // Dummy return to keep compiler happy
-    return regions_[0];
-}
-
 
 const Foam::oversetInterpolation& Foam::oversetMesh::interpolation() const
 {

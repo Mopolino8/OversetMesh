@@ -1,0 +1,103 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.5-dev                               |
+|   \\  /    A nd           | Web:      http://www.OpenFOAM.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (1 0 0);
+
+boundaryField
+{
+    oversetFaces
+    {
+        type overset;
+        value uniform (0 0 0);
+        coupledFringe yes;
+
+        setHoleCellValue  yes;
+        holeCellValue     (0 0 0);
+    }
+    bottom
+    {
+        // Note: must be fixedValue equal to inlet velocity for sea-keeping
+        type slip;
+    }
+    hull
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+    bilgeKeel
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+    deck
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+    inlet
+    {
+        type fixedValue;
+        value $internalField;
+    }
+    outlet
+    {
+        type inletOutlet;
+        inletValue uniform (0 0 0);
+        value $internalField;
+    }
+    side
+    {
+        type slip;
+    }
+    symmetry
+    {
+        type symmetryPlane;
+    }
+    y_max
+    {
+        type symmetryPlane;
+    }
+    top
+    {
+        type slip;
+    }
+    x_max
+    {
+        type slip;
+    }
+    x_min
+    {
+        type slip;
+    }
+    y_min
+    {
+        type slip;
+    }
+    z_max
+    {
+        type slip;
+    }
+    z_min
+    {
+        type slip;
+    }
+}
+
+
+// ************************************************************************* //

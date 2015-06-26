@@ -1,0 +1,111 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "constant/polyMesh";
+    object      boundary;
+}
+16
+(
+
+//???
+oversetFaces
+{
+	type            overset;
+        nFaces          0;
+        startFace      7736401;
+}
+
+
+bilgeKeel
+{
+        type           wall;
+        nFaces         13951;
+        startFace      7736401;
+}
+bottom
+{
+        type           patch;
+        nFaces         5418;
+        startFace      7750352;
+}
+deck
+{
+        type           wall;
+        nFaces         5147;
+        startFace      7755770;
+}
+hull
+{
+        type           wall;
+        nFaces         30678;
+        startFace      7760917;
+}
+inlet
+{
+        type           patch;
+        nFaces         4816;
+        startFace      7791595;
+}
+outlet
+{
+        type           patch;
+        nFaces         4816;
+        startFace      7796411;
+}
+side
+{
+        type           patch;
+        nFaces         14112;
+        startFace      7801227;
+}
+symmetry
+{
+        type           symmetryPlane;
+        nFaces         14112;
+        startFace      7815339;
+}
+top
+{
+        type           patch;
+        nFaces         5418;
+        startFace      7829451;
+}
+x_max
+{
+        type           patch;
+        nFaces         2910;
+        startFace      7834869;
+}
+x_min
+{
+        type           patch;
+        nFaces         2910;
+        startFace      7837779;
+}
+y_max
+{
+        type           symmetryPlane;
+        nFaces         22527;
+        startFace      7840689;
+}
+y_min
+{
+        type           patch;
+        nFaces         21825;
+        startFace      7863216;
+}
+z_max
+{
+        type           patch;
+        nFaces         750;
+        startFace      7885041;
+}
+z_min
+{
+        type           patch;
+        nFaces         750;
+        startFace      7885791;
+}
+)

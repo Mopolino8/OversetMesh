@@ -59,13 +59,13 @@ void Foam::oversetAdjustPhi
     const unallocLabelList& neighbour = mesh.neighbour();
 
     // Get region split to identify separate mesh components
-    const regionSplit& rs = om.split();
+    const labelList& regionID = om.regionID();
 
     // Sum up incoming and outgoing flux
-    scalarField regionFringeIn(rs.nRegions(), 0);
-    scalarField regionFringeOut(rs.nRegions(), 0);
+    scalarField regionFringeIn(om.regions().size(), 0);
+    scalarField regionFringeOut(om.regions().size(), 0);
 
-    scalarField regionFringeMagBalance(rs.nRegions(), 0);
+    scalarField regionFringeMagBalance(om.regions().size(), 0);
 
     // Adjust fluxes per region
     scalarField& phiIn = phi.internalField();
@@ -76,10 +76,10 @@ void Foam::oversetAdjustPhi
         const bool curFlip = fringeFaceFlips[ffI];
 
         // Get region index
-        const label curRegion = rs[owner[curFace]];
+        const label curRegion = regionID[owner[curFace]];
 
         // Debug check
-        if (rs[owner[curFace]] != rs[neighbour[curFace]])
+        if (regionID[owner[curFace]] != regionID[neighbour[curFace]])
         {
             FatalErrorIn
             (
@@ -140,7 +140,7 @@ void Foam::oversetAdjustPhi
         const bool curFlip = fringeFaceFlips[ffI];
 
         // Get region index
-        const label curRegion = rs[owner[curFace]];
+        const label curRegion = regionID[owner[curFace]];
 
         // Scale outgoing flux to match the incoming one
         if (!curFlip)
