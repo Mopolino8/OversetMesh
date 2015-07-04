@@ -792,8 +792,6 @@ void Foam::oversetMesh::calcFringeFaces() const
         }
     }
 
-    // HJ, this is wrong: fix parallelisation
-
     forAll (gammaPatches, patchI)
     {
         // Note: take faceCells from fvPatch (because of empty)
@@ -811,7 +809,8 @@ void Foam::oversetMesh::calcFringeFaces() const
             {
                 if
                 (
-                    mag(gammaNei[patchFaceI] - gammaOwn[patchFaceI]) > SMALL
+                    mag(gammaNei[patchFaceI]) < SMALL
+                 && mag(gammaOwn[patchFaceI]) < SMALL
                 )
                 {
                     acInternalF.append(start + patchFaceI);
