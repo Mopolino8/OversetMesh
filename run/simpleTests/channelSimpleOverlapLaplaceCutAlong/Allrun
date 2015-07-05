@@ -11,4 +11,4 @@ runApplication blockMesh
 # runApplication setsToZones  Not needed: cellZones built by blockMesh
 
 runApplication decomposePar -cellDist
-runApplication $application
+runParallel $application 2

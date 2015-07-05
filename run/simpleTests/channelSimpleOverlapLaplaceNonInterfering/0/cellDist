@@ -7,58 +7,111 @@
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    version         2.0;
-    format          ascii;
-    class           volScalarField;
-    object          T;
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      cellDist;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+dimensions      [0 0 0 0 0 0 0];
 
-dimensions [0 0 0 0 1 0 0];
-
-internalField uniform 2;
+internalField   nonuniform List<scalar> 
+60
+(
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+)
+;
 
 boundaryField
 {
-    oversetFaces
-    {
-        type overset;
-        value uniform 0;
-        coupledFringe yes;
-
-        setHoleCellValue  yes;
-        holeCellValue     0;
-    }
     left
     {
-        type fixedValue;
-        value uniform 1;
+        type            zeroGradient;
     }
     leftEnd
     {
-        type zeroGradient;
+        type            zeroGradient;
     }
     rightStart
     {
-        type zeroGradient;
+        type            zeroGradient;
     }
     right
     {
-        type fixedValue;
-        value uniform 2;
+        type            zeroGradient;
     }
     top
     {
-        type zeroGradient;
+        type            zeroGradient;
     }
     bottom
     {
-        type zeroGradient;
+        type            zeroGradient;
     }
     frontAndBack
     {
-        type empty;
+        type            empty;
     }
 }
 

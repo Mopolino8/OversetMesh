@@ -22,7 +22,7 @@ solvers
 //         smoother   GaussSeidel;
 //         nSweeps 5;
 //         minIter 1;
-//         maxIter 1000;
+//         maxIter 10;
 //         tolerance 1e-6;
 //         relTol    0;
 //     }
@@ -33,7 +33,7 @@ solvers
         preconditioner   DILU;
         tolerance        1e-8;
         relTol           0.0;
-        minIter          0;
+        minIter          1;
     }
 
 //     T
