@@ -16,46 +16,37 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-
 interpolation
 {
     type injection;
 }
 
+// Names or patches that determine hole cells
+holePatches ();
+
 regions
 (
-    // Background
+    background
     {
-        index 1;
-
         // Donor regions
-        donorRegions ( 0 );
-
-        // Names or patches that determine hole cells
-        holePatches ();
+        donorRegions ( hull );
 
         fringe
         {
             type manual;
-            holes       "backHole";
-//             holes       "empty";
-            acceptors   "backFringe";
-//             acceptors   "empty";
+            holes "backHole";
+            acceptors "backFringe";
         }
-
 //         fringe
 //         {
 //             type overlap;
 //         }
     }
-
-    // Cylinder
+    hull
     {
-        index 0;
+        donorRegions ( background );
 
-        donorRegions ( 1 );
-
-        holePatches  ( bilgeKeel deck hull);
+        holePatches ( bilgeKeel deck hull);
 
         fringe
         {

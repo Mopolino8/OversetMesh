@@ -1,3 +1,5 @@
 #!/bin/sh
 
 ( cd cylBumpinterOversetFoam ; ./Allclean )
+( cd oversetWigley ; ./Allclean )
+( cd oversetM5415 ; ./Allclean )

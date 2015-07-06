@@ -32,7 +32,8 @@ divSchemes
 
     div(phi,alpha)  Gauss vanLeer01;
 //     div(phi,alpha)  Gauss upwind;
-    div(phirb,alpha) Gauss vofCompression;
+//     div(phirb,alpha) Gauss vofCompression;
+    div(phirb,alpha) Gauss interfaceCompression;
 }
 
 laplacianSchemes

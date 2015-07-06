@@ -16,23 +16,20 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-
 interpolation
 {
     type injection;
 }
 
+// Names or patches that determine hole cells
+holePatches  ( hull );
+
 regions
 (
-    // Background
+    cellRegion0
     {
-        index 0;
-
         // Donor regions
-        donorRegions ( 1 );
-
-        // Names or patches that determine hole cells
-        holePatches ();
+        donorRegions ( cellRegion1 );
 
         fringe
         {
@@ -40,16 +37,10 @@ regions
             holes       backHole;
             acceptors   backFringe;
         }
-
     }
-
-    // hull
+    cellRegion1
     {
-        index 1;
-
-        donorRegions ( 0 );
-
-        holePatches  ( hull );
+        donorRegions ( cellRegion0 );
 
         fringe
         {

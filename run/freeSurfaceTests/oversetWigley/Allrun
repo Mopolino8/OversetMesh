@@ -7,6 +7,14 @@ application="interOversetFoam"
 
 \rm -rf 0
 cp -r save 0
+runApplication regionCellSets
+runApplication setsToZones
+runApplication setSet -batch setBatch.batch
+( cd constant/polyMesh/sets/ ; \rm -f cellRegion0 cellRegion0.gz cellRegion1 cellRegion1.gz backFringe_old backFringe_old.gz backHole_old backHole_old.gz )
 runApplication setFields
 
-runApplication $application
+#runApplication $application
+
+runApplication decomposePar -cellDist
+runApplication decomposeSets -writeEmptySets
+runParallel $application1 4

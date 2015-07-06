@@ -22,7 +22,6 @@ ddtSchemes
 gradSchemes
 {
     default         Gauss linear;
-    grad(p)         Gauss linear;
 }
 
 divSchemes
@@ -54,9 +53,11 @@ snGradSchemes
 
 fluxRequired
 {
-    p;
     pd;
     pcorr;
+
+    // potentialOversetFoam
+    p;
 }
 
 // ************************************************************************* //

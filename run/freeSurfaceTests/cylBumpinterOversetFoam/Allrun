@@ -16,4 +16,9 @@ runApplication setSet -batch setBatch.batch
 \mv 0/alpha1.org 0/alpha1
 runApplication setFields
 
-runApplication $application
+#runApplication $application
+
+runApplication decomposePar -cellDist
+runApplication decomposeSets -writeEmptySets
+runParallel $application 4
+

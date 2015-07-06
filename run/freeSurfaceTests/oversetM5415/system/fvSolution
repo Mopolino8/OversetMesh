@@ -26,7 +26,7 @@ solvers
 
         minIter          0;
         maxIter          1000;
-        tolerance        1e-08;
+        tolerance        1e-07;
         relTol           0.01;
     }
 
@@ -40,8 +40,8 @@ solvers
 
         minIter          0;
         maxIter          1000;
-        tolerance        1e-08;
-        relTol           0.0;
+        tolerance        1e-07;
+        relTol           0.01;
     }
 
     U
