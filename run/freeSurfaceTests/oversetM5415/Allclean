@@ -4,6 +4,7 @@
 . $WM_PROJECT_DIR/bin/tools/CleanFunctions
 
 cleanTimeDirectories
+\rm -rf processor*
 \rm -f .setSet constant/cellDecomposition constant/cellDecomposition.gz
 \rm -rf VTK
 \rm -rf constant/polyMesh/sets/

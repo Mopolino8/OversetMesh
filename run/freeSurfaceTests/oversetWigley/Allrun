@@ -3,7 +3,8 @@
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # Get application name
-application="interOversetFoam"
+application1="potentialOversetFoam"
+application2="interOversetFoam"
 
 \rm -rf 0
 cp -r save 0
@@ -13,8 +14,10 @@ runApplication setSet -batch setBatch.batch
 ( cd constant/polyMesh/sets/ ; \rm -f cellRegion0 cellRegion0.gz cellRegion1 cellRegion1.gz backFringe_old backFringe_old.gz backHole_old backHole_old.gz )
 runApplication setFields
 
-#runApplication $application
+#runApplication $application1
+#runApplication $application2
 
 runApplication decomposePar -cellDist
 runApplication decomposeSets -writeEmptySets
 runParallel $application1 4
+runParallel $application2 4
