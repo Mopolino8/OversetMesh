@@ -119,7 +119,18 @@ class oversetRegion
         mutable labelList* eligibleDonorCellsPtr_;
 
 
-        // Search tools
+        // Hole cutting tools
+
+            //- Hole patches as a triangular surface
+            mutable triSurface* holeTriMeshPtr_;
+
+            //- Triangular hole surface search algorithm.  Contains complete
+            //  cutting surface
+            //  Used in hole cutting
+            mutable triSurfaceSearch* holeSearchPtr_;
+
+
+        // Donor search tools
 
             //- Cell octree for search in local region
             //  Used in donor cell search
@@ -139,6 +150,9 @@ class oversetRegion
         //- Disallow default bitwise assignment
         void operator=(const oversetRegion&);
 
+
+        //- Prepare hole triangular mesh
+        void calcHoleTriMesh() const;
 
         // Calculate donor regions
         void calcDonorRegions() const;
@@ -246,7 +260,19 @@ public:
             const labelList& eligibleDonors() const;
 
 
-        // Search functionality
+        // Hole cutting search functionality
+
+            //- Are hole patches present?
+            bool holePatchesPresent() const;
+
+            //- Hole triangular surface
+            const triSurface& holeTriMesh() const;
+
+            //- Return triangular surface search object for hole patches
+            const triSurfaceSearch& holeSearch() const;
+
+
+        // Donor cell search functionality
 
             //- Return cell octree for search in local region
             //  Only eligible donors are added to the list

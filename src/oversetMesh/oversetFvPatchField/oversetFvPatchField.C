@@ -756,24 +756,31 @@ void oversetFvPatchField<Type>::initInterfaceMatrixUpdate
         {
             forAll (fringeFaces, fringeI)
             {
-                // Get addressing
-                const label& o = own[fringeFaces[fringeI]];
-                const label& n = nei[fringeFaces[fringeI]];
+                const label& curFace = fringeFaces[fringeI];
 
-                // Note change of sign in multiplication, because
-                // fringe coefficients belong to A
-                // HJ, 22/May/2013
-                if (fringeFaceFlips[fringeI])
+                // Multiplication is only done for internal fringe faces
+                // HJ, 1/May/2015
+                if (curFace < own.size())
                 {
-                    // Face pointing into live cell
-                    // Add overset off-diagonal contribution to live cell
-                    result[n] -= fringeLowerCoeffs_[fringeI]*psi[o];
-                }
-                else
-                {
-                    // Face pointing out of live cell
-                    // Add overset off-diagonal contribution to live cell
-                    result[o] -= fringeUpperCoeffs_[fringeI]*psi[n];
+                    // Get addressing
+                    const label& o = own[curFace];
+                    const label& n = nei[curFace];
+
+                    // Note change of sign in multiplication, because
+                    // fringe coefficients belong to A
+                    // HJ, 22/May/2013
+                    if (fringeFaceFlips[fringeI])
+                    {
+                        // Face pointing into live cell
+                        // Add overset off-diagonal contribution to live cell
+                        result[n] -= fringeLowerCoeffs_[fringeI]*psi[o];
+                    }
+                    else
+                    {
+                        // Face pointing out of live cell
+                        // Add overset off-diagonal contribution to live cell
+                        result[o] -= fringeUpperCoeffs_[fringeI]*psi[n];
+                    }
                 }
             }
         }
@@ -781,24 +788,31 @@ void oversetFvPatchField<Type>::initInterfaceMatrixUpdate
         {
             forAll (fringeFaces, fringeI)
             {
-                // Get addressing
-                const label& o = own[fringeFaces[fringeI]];
-                const label& n = nei[fringeFaces[fringeI]];
+                const label& curFace = fringeFaces[fringeI];
 
-                // Note change of sign in multiplication, because
-                // fringe coefficients belong to A
-                // HJ, 22/May/2013
-                if (fringeFaceFlips[fringeI])
+                // Multiplication is only done for internal fringe faces
+                // HJ, 1/May/2015
+                if (curFace < own.size())
                 {
-                    // Face pointing into of live cell
-                    // Add overset off-diagonal contribution to live cell
-                    result[n] += fringeLowerCoeffs_[fringeI]*psi[o];
-                }
-                else
-                {
-                    // Face pointing out live cell
-                    // Add overset off-diagonal contribution to live cell
-                    result[o] += fringeUpperCoeffs_[fringeI]*psi[n];
+                    // Get addressing
+                    const label& o = own[curFace];
+                    const label& n = nei[curFace];
+
+                    // Note change of sign in multiplication, because
+                    // fringe coefficients belong to A
+                    // HJ, 22/May/2013
+                    if (fringeFaceFlips[fringeI])
+                    {
+                        // Face pointing into of live cell
+                        // Add overset off-diagonal contribution to live cell
+                        result[n] += fringeLowerCoeffs_[fringeI]*psi[o];
+                    }
+                    else
+                    {
+                        // Face pointing out live cell
+                        // Add overset off-diagonal contribution to live cell
+                        result[o] += fringeUpperCoeffs_[fringeI]*psi[n];
+                    }
                 }
             }
         }
@@ -875,9 +889,14 @@ void oversetFvPatchField<Type>::patchFlux
         // Get addressing
         const label& faceI = fringeFaces[fringeI];
 
-        // HJ, check signs!!!
-        fluxIn[faceI] = fringeUpperCoeffs_[fringeI]*psi[nei[faceI]]
-            - fringeLowerCoeffs_[fringeI]*psi[own[faceI]];
+        // Multiplication is only done for internal fringe faces
+        // HJ, 1/May/2015
+        if (faceI < own.size())
+        {
+            // HJ, check signs!!!
+            fluxIn[faceI] = fringeUpperCoeffs_[fringeI]*psi[nei[faceI]]
+                - fringeLowerCoeffs_[fringeI]*psi[own[faceI]];
+        }
     }
 }
 

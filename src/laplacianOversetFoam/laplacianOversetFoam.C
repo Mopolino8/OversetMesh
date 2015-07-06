@@ -60,25 +60,27 @@ int main(int argc, char *argv[])
 #       include "readSIMPLEControls.H"
 
         T.correctBoundaryConditions();
+        Pout<< "T: " << T.internalField() << endl;
+        return 0;
 
-//         fvScalarMatrix TEqn
-//         (
-//             fvm::laplacian(DT, T)
-//         );
-
+        fvScalarMatrix TEqn
+        (
+            fvm::laplacian(DT, T)
+        );
+        Pout<< "TEqn: " << TEqn << endl;
 //         TEqn.solve();
 
-//         volScalarField residual
-//         (
-//             "residual",
-//             T
-//         );
+        volScalarField residual
+        (
+            "residual",
+            T
+        );
 
-//         residual.internalField() = TEqn.residual();
+        residual.internalField() = TEqn.residual();
 //         residual.boundaryField() == 0;
-//         residual.write();
+        residual.write();
 
-//         Info<< "residual " << gSumMag(residual.internalField()) << endl;
+        Info<< "residual " << gSumMag(residual.internalField()) << endl;
 
 #       include "write.H"
 

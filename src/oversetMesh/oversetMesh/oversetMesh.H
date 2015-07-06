@@ -91,17 +91,6 @@ private:
 
     // Demand-driven data
 
-        // Hole cutting
-
-            //- Hole patches as a triangular surface
-            mutable triSurface* holeTriMeshPtr_;
-
-            //- Triangular hole surface search algorithm.  Contains complete
-            //  cutting surface
-            //  Used in hole cutting
-            mutable triSurfaceSearch* holeSearchPtr_;
-
-
         // Cell clasification
 
             //- Acceptor cell labels
@@ -203,9 +192,6 @@ private:
 
     // Private member functions
 
-        //- Prepare hole triangular mesh
-        void calcHoleTriMesh() const;
-
         //- Calculate cell classification
         void calcCellClassification() const;
 
@@ -261,17 +247,11 @@ public:
             return regions_;
         }
 
-
-        // Hole cutting search functionality
-
-            //- Are hole patches present?
-            bool holePatchesPresent() const;
-
-            //- Hole triangular surface
-            const triSurface& holeTriMesh() const;
-
-            //- Return triangular surface search object for hole patches
-            const triSurfaceSearch& holeSearch() const;
+        //- Return hole patch names
+        const wordList& holePatchNames() const
+        {
+            return holePatchNames_;
+        }
 
 
         // Cell clasification

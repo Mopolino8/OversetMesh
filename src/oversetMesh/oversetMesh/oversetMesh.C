@@ -56,9 +56,6 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
     regions_(),
     holePatchNames_(dict_.lookup("holePatches")),
 
-    holeTriMeshPtr_(NULL),
-    holeSearchPtr_(NULL),
-
     acceptorCellsPtr_(NULL),
     donorCellsPtr_(NULL),
     holeCellsPtr_(NULL),

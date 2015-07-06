@@ -189,13 +189,12 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
         // Donor identification: search for donors for all processors
         // using local donor regions
-
-        // Create a list to record local donors.  Guess the size as
-        //  donorFraction of number of cells
-        DynamicList<donorAcceptor> localDonors
-        (
-            Foam::max(mesh_.nCells()/donorFraction(), 100)
-        );
+        // Note: local donor identification cannot happen here:
+        // there may be multiple donors with tolerance issues, to be resolved
+        // on master processor.
+        // Local donor identification shall happen after the identification
+        // to resolve issues with multiple hits
+        // HJ, 1/May/2015
 
         // Go through all donor regions and identify donor cells
         forAll (dr, drI)
@@ -251,10 +250,11 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                         if (pih.hit())
                         {
                             // Found a hit.  Additional check for point in cell
+                            // Note: Consider removing additional test to
+                            // improve robustness.  HJ, 1/Jun/2015
                             if
                             (
-                                mesh_.pointInCell
-//                                 mesh_.pointInCellBB
+                                mesh_.pointInCellBB
                                 (
                                     curP,
                                     curDonors[pih.index()]
@@ -266,12 +266,9 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                                 curDA[daI].setDonor
                                 (
                                     curDonors[pih.index()],
-                                    Pstream::myProcNo()
+                                    Pstream::myProcNo(),
+                                    cc[curDonors[pih.index()]]
                                 );
-
-                                // Record local donor data.  Note: acceptor
-                                // processor may be remote
-                                localDonors.append(curDA[daI]);
 
                                 // Note:
                                 // If the interpolation stencil requires
@@ -297,6 +294,9 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
         // - scatter to all processors
         if (Pstream::master())
         {
+            // Count multiple parallel hits
+            label nMultipleHits = 0;
+
             // Receive data from all processors and recombine
             for (label procI = 1; procI < Pstream::nProcs(); procI++)
             {
@@ -329,54 +329,56 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                     // recombined list
                     forAll (candidate, cI)
                     {
-                        if
-                        (
-                            !recombined[cI].donorFound() 
-                         && candidate[cI].donorFound()
-                        )
+                        if (candidate[cI].donorFound())
                         {
-                            // Candidate has found the donor
-                            // Record donor and donor processor
-                            recombined[cI].setDonor
-                            (
-                                candidate[cI].donorCell(),
-                                candidate[cI].donorProcNo()
-                            );
-                        }
-                        // Checking
-                        else if
-                        (
-                            recombined[cI].donorFound() 
-                         && candidate[cI].donorFound()
-                        )
-                        {
-                            if
-                            (
-                                (
-                                    recombined[cI].donorCell()
-                                 != candidate[cI].donorCell()
-                                )
-                             || (
-                                    recombined[cI].donorCell()
-                                 != candidate[cI].donorCell()
-                                )
-                            )
+                            if (!recombined[cI].donorFound())
                             {
-                                FatalErrorIn
+                                // Candidate has found the donor
+                                // Record donor and donor processor
+                                recombined[cI].setDonor
                                 (
-                                    "void oversetRegion::"
-                                    "calcDonorAcceptorCells() const"
-                                )   << "Region " << name()
-                                    << ": Multiple parallel donor found: "
-                                    << recombined[cI] << nl
-                                    << candidate[cI]
-                                    << abort(FatalError);
+                                    candidate[cI].donorCell(),
+                                    candidate[cI].donorProcNo(),
+                                    candidate[cI].donorPoint()
+                                );
+                            }
+                            else
+                            {
+                                // Multiple hit: take closer donor cell
+                                if
+                                (
+                                    candidate[cI].distance()
+                                  < recombined[cI].distance()
+                                )
+                                {
+                                    recombined[cI].setDonor
+                                    (
+                                        candidate[cI].donorCell(),
+                                        candidate[cI].donorProcNo(),
+                                        candidate[cI].donorPoint()
+                                    );
+
+                                    nMultipleHits++;
+                                }
                             }
                         }
                     }
                 }
             }
 
+            // Report mutiple hits
+            if (nMultipleHits > 0)
+            {
+                WarningIn
+                (
+                    "void oversetRegion::"
+                    "calcDonorAcceptorCells() const"
+                )   << "Region " << name()
+                    << ": Found " << nMultipleHits
+                    << " multiple parallel donor hits.  "
+                    << "Probably direct face hits"
+                    << endl;
+            }
         }
         else
         {
@@ -392,6 +394,29 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
         // Scatter recombined list to all processors
         Pstream::scatter(globalDonorAcceptor);
+
+        // Create a list to record local donors.  Guess the size as
+        //  donorFraction of number of cells
+        DynamicList<donorAcceptor> localDonors
+        (
+            Foam::max(mesh_.nCells()/donorFraction(), 100)
+        );
+
+        forAll (globalDonorAcceptor, procI)
+        {
+            List<donorAcceptor>& curDA = globalDonorAcceptor[procI];
+
+            forAll (curDA, daI)
+            {
+                if (curDA[daI].donorProcNo() == Pstream::myProcNo())
+                {
+                    // Record local donor data.  Note: acceptor
+                    // processor may be remote
+                    localDonors.append(curDA[daI]);
+                }
+            }
+        }
+
 
         // Check if donors have been found for all local acceptors
         {
@@ -418,6 +443,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                     )   << "Donor not found for cell "
                         << curDA[daI].acceptorCell() << " on processor "
                         << curDA[daI].acceptorProcNo()
+                        << " centre = " << curDA[daI].acceptorPoint()
                         << endl;
 
                     nUncoveredAcceptors++;
@@ -429,7 +455,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                 }
             }
 
-//             Pout<< "Region " << index()
+//             Pout<< "Region " << name()
 //                 << " number of processor donors for " << curDA.size()
 //                 << " local acceptors per processor: " << nDonorsFromProc
 //                 << endl;
@@ -473,7 +499,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
             nDonorsToProc[d[dI].acceptorProcNo()]++;
         }
 
-//         Pout<< "Region " << index()
+//         Pout<< "Region " << name()
 //             << " number of local donors = " << d.size()
 //             << " per processor: " << nDonorsToProc
 //             << endl;
@@ -537,10 +563,11 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                 if (pih.hit())
                 {
                     // Found a hit.  Additional check for point in cell
+                    // Note: Consider removing additional test to improve
+                    // robustness.  HJ, 1/Jun/2015
                     if
                     (
-                        mesh_.pointInCell
-//                         mesh_.pointInCellBB
+                        mesh_.pointInCellBB
                         (
                             curP,
                             curDonors[pih.index()]
@@ -552,7 +579,8 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                         DA[daI].setDonor
                         (
                             curDonors[pih.index()],
-                            Pstream::myProcNo()
+                            Pstream::myProcNo(),
+                            cc[curDonors[pih.index()]]
                         );
                     }
                 }
@@ -586,6 +614,10 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                     << abort(FatalError);
             }
         }
+
+        Info<< "Serial region " << name()
+            << " number of donors and acceptors: " << DA.size()
+            << endl;
 
         // Since in serial execution donor and acceptor data is identical
         // copy the acceptor list into donor list after the search and check
@@ -637,10 +669,28 @@ void Foam::oversetRegion::calcHoleCells() const
 
     // Mark all hole cells using their hole boundary patch inside search
 
-    if (overset().holePatchesPresent())
+    // Get regions
+    const PtrList<oversetRegion>& regions = oversetMesh_.regions();
+
+    // Go through all regions apart from the current
+    forAll (regions, regionI)
     {
+        // Skip current region
+        if (regionI == index())
+        {
+            continue;
+        }
+
+        const oversetRegion& otherRegion = regions[regionI];
+
+        // If there are no hole patches on other region, skip it
+        if (!otherRegion.holePatchesPresent())
+        {
+            continue;
+        }
+
         // Get reference to hole search
-        const triSurfaceSearch& holeSearch = overset().holeSearch();
+        const triSurfaceSearch& holeSearch = otherRegion.holeSearch();
 
         boolList regionInside = holeSearch.calcInside(localC);
 
@@ -650,39 +700,38 @@ void Foam::oversetRegion::calcHoleCells() const
         {
             holeMask[rc[i]] |= regionInside[i];
         }
-
-        // Count hole cells
-        label nHoleCells = 0;
-
-        forAll (rc, i)
-        {
-            if (holeMask[rc[i]])
-            {
-                nHoleCells++;
-            }
-        }
-
-        // Allocate hole cells storage
-        holeCellsPtr_ = new labelList(nHoleCells);
-        labelList& ch = *holeCellsPtr_;
-
-        // Reset counter and collect hole cells
-        nHoleCells = 0;
-
-        forAll (rc, i)
-        {
-            if (holeMask[rc[i]])
-            {
-                ch[nHoleCells] = rc[i];
-                nHoleCells++;
-            }
-        }
     }
-    else
+
+    // Count hole cells
+    label nHoleCells = 0;
+
+    forAll (rc, i)
     {
-        // No hole search = no holes
-        holeCellsPtr_ = new labelList();
+        if (holeMask[rc[i]])
+        {
+            nHoleCells++;
+        }
     }
+
+    // Allocate hole cells storage
+    holeCellsPtr_ = new labelList(nHoleCells);
+    labelList& ch = *holeCellsPtr_;
+
+    // Reset counter and collect hole cells
+    nHoleCells = 0;
+
+    forAll (rc, i)
+    {
+        if (holeMask[rc[i]])
+        {
+            ch[nHoleCells] = rc[i];
+            nHoleCells++;
+        }
+    }
+
+//     Pout<< "Region " << name()
+//         << " number of local holes = " << holeCellsPtr_->size()
+//         << endl;
 }
 
 
@@ -750,6 +799,207 @@ void Foam::oversetRegion::calcEligibleDonorCells() const
 }
 
 
+void Foam::oversetRegion::calcHoleTriMesh() const
+{
+    if (holeTriMeshPtr_)
+    {
+        FatalErrorIn("void oversetRegion::calcHoleTriMesh() const")
+            << "Hole tri mesh already calculated"
+            << abort(FatalError);
+    }
+
+    // Create region mask to check if patch touches region
+    boolList regionMask(mesh().nCells(), false);
+
+    const labelList& rc = regionCells();
+
+    forAll (rc, rcI)
+    {
+        regionMask[rc[rcI]] = true;
+    }
+
+    // Get hole patch names
+    const wordList& holePatchNames = overset().holePatchNames();
+
+    // Collect local hole faces
+    labelHashSet holePatches;
+
+    forAll (holePatchNames, nameI)
+    {
+        polyPatchID curHolePatch
+        (
+            holePatchNames[nameI],
+            mesh().boundaryMesh()
+        );
+
+        if (curHolePatch.active())
+        {
+            // If the patch has zero size, do not insert it
+            // Parallel cutting bug.  HJ, 17/Apr/2014
+            if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
+            {
+                // Check if the patch is touching the current region
+                const labelList& faceCells =
+                    mesh().boundary()[curHolePatch.index()].faceCells();
+
+                label nFound = 0;
+
+                forAll (faceCells, fcI)
+                {
+                    if (regionMask[faceCells[fcI]])
+                    {
+                        nFound++;
+                    }
+                }
+
+                // Check if the complete patch belongs to current region
+                if (nFound == faceCells.size())
+                {
+                    holePatches.insert(curHolePatch.index());
+                }
+                else if (nFound > 0)
+                {
+                    WarningIn("void oversetRegion::calcHoleTriMesh() const")
+                        << "Patch " << holePatchNames[nameI]
+                        << " seems to be split between multiple regions.  "
+                        << "Please check overset region structure.  "
+                        << "nFound: " << nFound
+                        << " faceCells: " << faceCells.size()
+                        << endl;
+                }
+            }
+        }
+        else
+        {
+            FatalErrorIn
+            (
+                "const triSurfaceMesh& oversetRegion::holeTriMesh() const"
+            )   << "Patch "  << holePatchNames[nameI]
+                << " cannot be found.  Available patch names: "
+                << mesh().boundaryMesh().names()
+                << abort(FatalError);
+        }
+    }
+
+    // Make and invert local triSurface
+    triFaceList triFaces;
+    pointField triPoints;
+
+    // Memory management
+    {
+        triSurface ts = triSurfaceTools::triangulate
+        (
+            mesh().boundaryMesh(),
+            holePatches
+        );
+
+        // Clean mutiple points and zero-sized triangles
+        ts.cleanup(false);
+
+        triFaces.setSize(ts.size());
+        triPoints = ts.points();
+
+        forAll (ts, tsI)
+        {
+            triFaces[tsI] = ts[tsI].reverseFace();
+        }
+    }
+
+    if (Pstream::parRun())
+    {
+        // Combine all faces and points into a single list
+
+        List<triFaceList> allTriFaces(Pstream::nProcs());
+        List<pointField> allTriPoints(Pstream::nProcs());
+
+        allTriFaces[Pstream::myProcNo()] = triFaces;
+        allTriPoints[Pstream::myProcNo()] = triPoints;
+
+        Pstream::gatherList(allTriFaces);
+        Pstream::scatterList(allTriFaces);
+
+        Pstream::gatherList(allTriPoints);
+        Pstream::scatterList(allTriPoints);
+
+        // Re-pack points and faces
+
+        label nTris = 0;
+        label nPoints = 0;
+
+        forAll (allTriFaces, procI)
+        {
+            nTris += allTriFaces[procI].size();
+            nPoints += allTriPoints[procI].size();
+        }
+
+        // Pack points
+        triPoints.setSize(nPoints);
+
+        // Prepare point renumbering array
+        labelListList renumberPoints(Pstream::nProcs());
+
+        nPoints = 0;
+
+        forAll (allTriPoints, procI)
+        {
+            const pointField& ptp = allTriPoints[procI];
+
+            renumberPoints[procI].setSize(ptp.size());
+
+            labelList& procRenumberPoints = renumberPoints[procI];
+
+            forAll (ptp, ptpI)
+            {
+                triPoints[nPoints] = ptp[ptpI];
+                procRenumberPoints[ptpI] = nPoints;
+
+                nPoints++;
+            }
+        }
+
+        // Pack triangles and renumber into complete points on the fly
+        triFaces.setSize(nTris);
+
+        nTris = 0;
+
+        forAll (allTriFaces, procI)
+        {
+            const triFaceList& ptf = allTriFaces[procI];
+
+            const labelList& procRenumberPoints = renumberPoints[procI];
+
+            forAll (ptf, ptfI)
+            {
+                const triFace& procFace = ptf[ptfI];
+
+                triFace& renumberFace = triFaces[nTris];
+
+                forAll (renumberFace, rfI)
+                {
+                    renumberFace[rfI] = procRenumberPoints[procFace[rfI]];
+                }
+
+                nTris++;
+            }
+        }
+    }
+
+    // Make a complete triSurface from local data
+    holeTriMeshPtr_ = new triSurface
+    (
+        triFaces,
+        triPoints
+    );
+
+    // Clean up duplicate points and zero sized triangles
+    holeTriMeshPtr_->cleanup(false);
+
+    Info<< "Region " << name() << ": "
+        << holeTriMeshPtr_->size() << " triangles in hole cutting"
+        << endl;
+}
+
+
 void Foam::oversetRegion::calcCellSearch() const
 {
     if (cellSearchPtr_)
@@ -796,6 +1046,9 @@ void Foam::oversetRegion::clearOut()
     deleteDemandDrivenData(holeCellsPtr_);
     deleteDemandDrivenData(eligibleDonorCellsPtr_);
 
+    deleteDemandDrivenData(holeTriMeshPtr_);
+    deleteDemandDrivenData(holeSearchPtr_);
+
     deleteDemandDrivenData(cellSearchPtr_);
 }
 
@@ -825,6 +1078,9 @@ Foam::oversetRegion::oversetRegion
     donorCellsPtr_(NULL),
     holeCellsPtr_(NULL),
     eligibleDonorCellsPtr_(NULL),
+
+    holeTriMeshPtr_(NULL),
+    holeSearchPtr_(NULL),
 
     cellSearchPtr_(NULL)
 {
@@ -934,6 +1190,38 @@ const Foam::labelList& Foam::oversetRegion::eligibleDonors() const
 
     return *eligibleDonorCellsPtr_;
 }
+
+
+bool Foam::oversetRegion::holePatchesPresent() const
+{
+    return !holeTriMesh().empty();
+}
+
+
+const Foam::triSurface& Foam::oversetRegion::holeTriMesh() const
+{
+    if (!holeTriMeshPtr_)
+    {
+        calcHoleTriMesh();
+    }
+
+    return *holeTriMeshPtr_;
+}
+
+
+const Foam::triSurfaceSearch& Foam::oversetRegion::holeSearch() const
+{
+    if (!holeSearchPtr_)
+    {
+        holeSearchPtr_ = new triSurfaceSearch
+        (
+            holeTriMesh()
+        );
+    }
+
+    return *holeSearchPtr_;
+}
+
 
 const Foam::indexedOctree<Foam::treeDataCell>&
 Foam::oversetRegion::cellSearch() const

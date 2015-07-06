@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 
     // Force the write
     U.write();
-//     p.write();
+    p.write();
     phi.write();
 
     if (args.optionFound("writep"))

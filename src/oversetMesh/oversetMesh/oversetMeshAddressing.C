@@ -35,180 +35,6 @@ License
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::oversetMesh::calcHoleTriMesh() const
-{
-    if (holeTriMeshPtr_)
-    {
-        FatalErrorIn("void oversetMesh::calcHoleTriMesh() const")
-            << "Hole tri mesh already calculated"
-            << abort(FatalError);
-    }
-
-    // Collect local hole faces
-    labelHashSet holePatches;
-
-    forAll (holePatchNames_, nameI)
-    {
-        polyPatchID curHolePatch
-        (
-            holePatchNames_[nameI],
-            mesh().boundaryMesh()
-        );
-
-        if (curHolePatch.active())
-        {
-            // If the patch has zero size, do not insert it
-            // Parallel cutting bug.  HJ, 17/Apr/2014
-            if (!mesh().boundaryMesh()[curHolePatch.index()].empty())
-            {
-                holePatches.insert(curHolePatch.index());
-            }
-        }
-        else
-        {
-            FatalErrorIn
-            (
-                "const triSurfaceMesh& oversetMesh::holeTriMesh() const"
-            )   << "Patch "  << holePatchNames_[nameI]
-                << " cannot be found.  Available patch names: "
-                << mesh().boundaryMesh().names()
-                << abort(FatalError);
-        }
-    }
-
-    // Make and invert local triSurface
-    triFaceList triFaces;
-    pointField triPoints;
-
-    // Memory management
-    {
-        triSurface ts = triSurfaceTools::triangulate
-        (
-            mesh().boundaryMesh(),
-            holePatches
-        );
-
-        // Clean mutiple points and zero-sized triangles
-        ts.cleanup(false);
-
-        triFaces.setSize(ts.size());
-        triPoints = ts.points();
-
-        forAll (ts, tsI)
-        {
-            triFaces[tsI] = ts[tsI].reverseFace();
-        }
-    }
-
-    if (Pstream::parRun())
-    {
-        // Combine all faces and points into a single list
-
-        List<triFaceList> allTriFaces(Pstream::nProcs());
-        List<pointField> allTriPoints(Pstream::nProcs());
-
-        allTriFaces[Pstream::myProcNo()] = triFaces;
-        allTriPoints[Pstream::myProcNo()] = triPoints;
-
-        Pstream::gatherList(allTriFaces);
-        Pstream::scatterList(allTriFaces);
-
-        Pstream::gatherList(allTriPoints);
-        Pstream::scatterList(allTriPoints);
-
-        // Re-pack points and faces
-
-        label nTris = 0;
-        label nPoints = 0;
-
-        forAll (allTriFaces, procI)
-        {
-            nTris += allTriFaces[procI].size();
-            nPoints += allTriPoints[procI].size();
-        }
-
-        // Pack points
-        triPoints.setSize(nPoints);
-
-        // Prepare point renumbering array
-        labelListList renumberPoints(Pstream::nProcs());
-
-        nPoints = 0;
-
-        forAll (allTriPoints, procI)
-        {
-            const pointField& ptp = allTriPoints[procI];
-
-            renumberPoints[procI].setSize(ptp.size());
-
-            labelList& procRenumberPoints = renumberPoints[procI];
-
-            forAll (ptp, ptpI)
-            {
-                triPoints[nPoints] = ptp[ptpI];
-                procRenumberPoints[ptpI] = nPoints;
-
-                nPoints++;
-            }
-        }
-
-        // Pack triangles and renumber into complete points on the fly
-        triFaces.setSize(nTris);
-
-        nTris = 0;
-
-        forAll (allTriFaces, procI)
-        {
-            const triFaceList& ptf = allTriFaces[procI];
-
-            const labelList& procRenumberPoints = renumberPoints[procI];
-
-            forAll (ptf, ptfI)
-            {
-                const triFace& procFace = ptf[ptfI];
-
-                triFace& renumberFace = triFaces[nTris];
-
-                forAll (renumberFace, rfI)
-                {
-                    renumberFace[rfI] = procRenumberPoints[procFace[rfI]];
-                }
-
-                nTris++;
-            }
-        }
-    }
-
-    // Make a complete triSurface from local data
-    holeTriMeshPtr_ = new triSurface
-    (
-        triFaces,
-        triPoints
-    );
-
-    // Clean up duplicate points and zero sized triangles
-    holeTriMeshPtr_->cleanup(false);
-
-    if (holeTriMeshPtr_->empty())
-    {
-        InfoIn
-        (
-            "const triSurfaceMesh& oversetMesh::holeTriMesh() const"
-        )   << "No hole patches detected: cannot perform hole cutting"
-            << endl;
-    }
-
-    if (debug)
-    {
-        InfoIn
-        (
-            "const triSurfaceMesh& oversetMesh::holeTriMesh() const"
-        )   << holeTriMeshPtr_->size() << " triangles in hole cutting"
-            << endl;
-    }
-}
-
-
 void Foam::oversetMesh::calcCellClassification() const
 {
     if (acceptorCellsPtr_ || donorCellsPtr_ || holeCellsPtr_)
@@ -218,11 +44,34 @@ void Foam::oversetMesh::calcCellClassification() const
             << abort(FatalError);
     }
 
-    // Mark acceptor and donor and hole cells
+    // Count acceptor and donor and hole cells
+    label nAcceptorCells = 0;
+    label nDonorCells = 0;
+    label nHoleCells = 0;
 
-    boolList acceptorMask(mesh().nCells(), false);
-    boolList donorMask(mesh().nCells(), false);
-    boolList holeMask(mesh().nCells(), false);
+    forAll (regions_, regionI)
+    {
+        nAcceptorCells += regions_[regionI].acceptors().size();
+        nDonorCells += regions_[regionI].donors().size();
+        nHoleCells += regions_[regionI].holes().size();
+    }
+
+    Pout<< "Number of acceptor cells: " << nAcceptorCells << endl;
+    acceptorCellsPtr_ = new labelList(nAcceptorCells);
+    labelList& acceptor = *acceptorCellsPtr_;
+
+    Pout<< "Number of donor cells: " << nDonorCells << endl;
+    donorCellsPtr_ = new labelList(nDonorCells);
+    labelList& donor = *donorCellsPtr_;
+
+    Pout<< "Number of hole cells: " << nHoleCells << endl;
+    holeCellsPtr_ = new labelList(nHoleCells);
+    labelList& hole = *holeCellsPtr_;
+
+    // Reset counters
+    nAcceptorCells = 0;
+    nDonorCells = 0;
+    nHoleCells = 0;
 
     forAll (regions_, regionI)
     {
@@ -231,7 +80,8 @@ void Foam::oversetMesh::calcCellClassification() const
 
         forAll (curAcceptors, aI)
         {
-            acceptorMask[curAcceptors[aI].acceptorCell()] = true;
+            acceptor[nAcceptorCells] = curAcceptors[aI].acceptorCell();
+            nAcceptorCells++;
         }
 
         // Donors
@@ -239,7 +89,8 @@ void Foam::oversetMesh::calcCellClassification() const
 
         forAll (curDonors, dI)
         {
-            donorMask[curDonors[dI].donorCell()] = true;
+            donor[nDonorCells] = curDonors[dI].donorCell();
+            nDonorCells++;
         }
 
         // Holes
@@ -247,7 +98,8 @@ void Foam::oversetMesh::calcCellClassification() const
 
         forAll (curHoles, hI)
         {
-            holeMask[curHoles[hI]] = true;
+            hole[nHoleCells] = curHoles[hI];
+            nHoleCells++;
         }
     }
 
@@ -259,90 +111,6 @@ void Foam::oversetMesh::calcCellClassification() const
     // Check for donors that are holes
 
     // Check for donors that are acceptors
-
-
-    // Count and collect the cells
-
-    // Count acceptor cells
-    label nAcceptorCells = 0;
-
-    forAll (acceptorMask, cellI)
-    {
-        if (acceptorMask[cellI])
-        {
-            nAcceptorCells++;
-        }
-    }
-
-    Info<< "Number of acceptor cells = " << nAcceptorCells << endl;
-    acceptorCellsPtr_ = new labelList(nAcceptorCells);
-    labelList& acceptor = *acceptorCellsPtr_;
-
-    // Reset counter and collect acceptor cells
-    nAcceptorCells = 0;
-
-    forAll (acceptorMask, cellI)
-    {
-        if (acceptorMask[cellI])
-        {
-            acceptor[nAcceptorCells] = cellI;
-            nAcceptorCells++;
-        }
-    }
-
-    // Count donor cells and prepare
-    label nDonorCells = 0;
-
-    forAll (donorMask, cellI)
-    {
-        if (donorMask[cellI])
-        {
-            nDonorCells++;
-        }
-    }
-
-    Info<< "Number of donor cells = " << nDonorCells << endl;
-    donorCellsPtr_ = new labelList(nDonorCells);
-    labelList& donor = *donorCellsPtr_;
-
-    // Reset counter and collect donor cells
-    nDonorCells = 0;
-
-    forAll (donorMask, cellI)
-    {
-        if (donorMask[cellI])
-        {
-            donor[nDonorCells] = cellI;
-            nDonorCells++;
-        }
-    }
-
-    // Count hole cells
-    label nHoleCells = 0;
-
-    forAll (holeMask, cellI)
-    {
-        if (holeMask[cellI])
-        {
-            nHoleCells++;
-        }
-    }
-
-    Info<< "Number of hole cells = " << nHoleCells << nl << endl;
-    holeCellsPtr_ = new labelList(nHoleCells);
-    labelList& hole = *holeCellsPtr_;
-
-    // Reset counter and collect hole cells
-    nHoleCells = 0;
-
-    forAll (holeMask, cellI)
-    {
-        if (holeMask[cellI])
-        {
-            hole[nHoleCells] = cellI;
-            nHoleCells++;
-        }
-    }
 }
 
 
@@ -1100,9 +868,17 @@ void Foam::oversetMesh::calcParallelAddressing() const
         label nRemoteAcceptors = 0;
 
         // Collect and mark acceptors that are local
+
+        // Note:
+        // In order to avoid creating a donorAcceptorList across all regions
+        // use a counter which follows the number of analysed acceptors
+        // for the local mesh across all regions
+        // HJ, 1/May/2015
+        label acceptorI = 0;
+
         forAll (regions_, regionI)
         {
-            // Analyse the acceptor list
+            // Analyse the acceptor list for local acceptors
             const donorAcceptorList& curAcceptors =
                 regions_[regionI].acceptors();
 
@@ -1112,19 +888,22 @@ void Foam::oversetMesh::calcParallelAddressing() const
                 {
                     // Local donor and acceptor
                     locDonors[nLocalAddr] = curAcceptors[aI].donorCell();
-                    locDonorAddr[nLocalAddr] = nLocalAddr;
+                    locDonorAddr[nLocalAddr] = acceptorI;
                     nLocalAddr++;
                 }
                 else
                 {
                     // Record local acceptor with a remote donor:
                     // Data will be received from master
-                    remAcceptorAddr[nRemoteAcceptors] = aI;
+                    remAcceptorAddr[nRemoteAcceptors] = acceptorI;
 
                     procRemoteAcceptors[nRemoteAcceptors] = curAcceptors[aI];
 
                     nRemoteAcceptors++;
                 }
+
+                // Increment acceptor counter
+                acceptorI++;
             }
 
             // Analyse the donor list
@@ -1157,16 +936,10 @@ void Foam::oversetMesh::calcParallelAddressing() const
 
         remAcceptorAddr.setSize(nRemoteAcceptors);
         procRemoteAcceptors.setSize(nRemoteAcceptors);
-
+        
         // Reset the size of lists
         remDonors.setSize(nRemoteDonors);
         procRemoteDonors.setSize(nRemoteDonors);
-
-        Pout<< "Number of donors: local = " << nLocalAddr 
-            << " remote = " << nRemoteDonors
-            << " Number of local acceptors = " << ac.size() - nRemoteAcceptors
-            << " remote = " << nRemoteAcceptors
-            << endl;
 
         // Gather remote donor and  acceptor data before commes indentification
         Pstream::gatherList(globalRemoteDonors);
@@ -1285,9 +1058,6 @@ void Foam::oversetMesh::calcParallelAddressing() const
         // Count local donors to local acceptors
         label nLocalAddr = 0;
 
-        Info<< "locDonors.size() = " << locDonors.size()
-            << " locDonorAddr.size() = " << locDonorAddr.size()
-            << " nLocalAddr = " << nLocalAddr << endl;
         // Go through all acceptors and pick up the donor
         forAll (regions_, regionI)
         {
@@ -1321,9 +1091,6 @@ void Foam::oversetMesh::calcParallelAddressing() const
 
 void Foam::oversetMesh::clearOut() const
 {
-    deleteDemandDrivenData(holeTriMeshPtr_);
-    deleteDemandDrivenData(holeSearchPtr_);
-
     deleteDemandDrivenData(acceptorCellsPtr_);
     deleteDemandDrivenData(donorCellsPtr_);
     deleteDemandDrivenData(holeCellsPtr_);
@@ -1357,37 +1124,6 @@ void Foam::oversetMesh::clearOut() const
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-bool Foam::oversetMesh::holePatchesPresent() const
-{
-    return !holeTriMesh().empty();
-}
-
-
-const Foam::triSurface& Foam::oversetMesh::holeTriMesh() const
-{
-    if (!holeTriMeshPtr_)
-    {
-        calcHoleTriMesh();
-    }
-
-    return *holeTriMeshPtr_;
-}
-
-
-const Foam::triSurfaceSearch& Foam::oversetMesh::holeSearch() const
-{
-    if (!holeSearchPtr_)
-    {
-        holeSearchPtr_ = new triSurfaceSearch
-        (
-            holeTriMesh()
-        );
-    }
-
-    return *holeSearchPtr_;
-}
-
 
 const Foam::labelList& Foam::oversetMesh::acceptorCells() const
 {

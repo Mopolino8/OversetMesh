@@ -87,6 +87,9 @@ class donorAcceptor
             //- Donor processor number
             label donorProcNo_;
 
+            //- Donor location
+            point donorPoint_;
+
 
 public:
 
@@ -108,7 +111,8 @@ public:
             acceptorProcNo_(acceptorProcNo),
             acceptorPoint_(acceptorPoint),
             donorCell_(-1),
-            donorProcNo_(-1)
+            donorProcNo_(-1),
+            donorPoint_(vector::zero)
         {}
 
         //- Construct from Istream
@@ -118,7 +122,8 @@ public:
             acceptorProcNo_(readLabel(is)),
             acceptorPoint_(is),
             donorCell_(readLabel(is)),
-            donorProcNo_(readLabel(is))
+            donorProcNo_(readLabel(is)),
+            donorPoint_(is)
         {}
 
         //- Copy constructor - default
@@ -194,14 +199,45 @@ public:
                 return donorProcNo_;
             }
 
+            //- Return donor point
+            const point& donorPoint() const
+            {
+                if (donorFound())
+                {
+                    return donorPoint_;
+                }
+                else
+                {
+                    return vector::max;
+                }
+            }
+
+            //- Return donor to acceptor distance
+            scalar distance() const
+            {
+                if (donorFound())
+                {
+                    return mag(acceptorPoint_ - donorPoint_);
+                }
+                else
+                {
+                    return GREAT;
+                }
+            }
 
         // Edit
 
             //- Set hit: donor found
-            void setDonor(const label& donorCell, const label& donorProcNo)
+            void setDonor
+            (
+                const label& donorCell,
+                const label& donorProcNo,
+                const point& donorPoint
+            )
             {
                 donorCell_ = donorCell;
                 donorProcNo_ = donorProcNo;
+                donorPoint_ = donorPoint;
             }
 
 
@@ -215,6 +251,7 @@ public:
 
             donorCell_ = rd.donorCell_;
             donorProcNo_ = rd.donorProcNo_;
+            donorPoint_ = rd.donorPoint_;
         }
 
 
@@ -253,7 +290,8 @@ public:
                 >> rd.acceptorProcNo_
                 >> rd.acceptorPoint_
                 >> rd.donorCell_
-                >> rd.donorProcNo_;
+                >> rd.donorProcNo_
+                >> rd.donorPoint_;
 
             return is;
         }
@@ -265,7 +303,8 @@ public:
                 << rd.acceptorProcNo_ << token::SPACE
                 << rd.acceptorPoint_ << token::SPACE
                 << rd.donorCell_ << token::SPACE
-                << rd.donorProcNo_;
+                << rd.donorProcNo_ << token::SPACE
+                << rd.donorPoint_;
 
             return os;
         }

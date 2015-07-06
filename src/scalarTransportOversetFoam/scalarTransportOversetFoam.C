@@ -68,7 +68,6 @@ int main(int argc, char *argv[])
           - fvm::laplacian(DT, T)
         );
 
-//         TEqn.completeAssembly();
         TEqn.solve();
 
 //         volScalarField Tresidual
@@ -89,13 +88,7 @@ int main(int argc, char *argv[])
           + fvm::div(phi, V)
           - fvm::laplacian(DV, V)
         );
-        VEqn.completeAssembly();
 
-        Info<< "DIAGS: " << TEqn.diag() - VEqn.diag() << nl
-            << "uppers: " << TEqn.upper() - VEqn.upper() << nl
-            << "lowers: " << TEqn.lower() - VEqn.lower() << nl
-            << "source: " << TEqn.source() - VEqn.source().component(0) << nl
-            << endl;
         VEqn.solve();
 
 //         return 0;

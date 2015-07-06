@@ -40,7 +40,6 @@
             regionIndexIn[cellI] = regionID[cellI];
         }
 
-
         // Update boundary values
         forAll (regionIndex.boundaryField(), patchI)
         {
@@ -52,4 +51,5 @@
         }
     }
 
-    regionIndex.write();
+    //  Unsure why regionIndex cannot be written.  HJ, 6/Jul/2015
+//     regionIndex.write();
