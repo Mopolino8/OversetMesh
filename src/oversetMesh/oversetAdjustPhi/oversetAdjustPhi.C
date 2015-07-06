@@ -29,6 +29,7 @@ License
 #include "surfaceFields.H"
 #include "oversetMesh.H"
 #include "fvc.H"
+#include "processorPolyPatch.H"
 
 // * * * * * * * * * * * * * * * Global Functions  * * * * * * * * * * * * * //
 
@@ -70,63 +71,144 @@ void Foam::oversetAdjustPhi
     // Adjust fluxes per region
     scalarField& phiIn = phi.internalField();
 
+    // Note: fringe faces contain both internal and processor boundary
+    // faces.  Make sure processor faces are not counted double.
+    // HJ, 1/May/2015
     forAll (fringeFaces, ffI)
     {
         const label curFace = fringeFaces[ffI];
         const bool curFlip = fringeFaceFlips[ffI];
 
-        // Get region index
-        const label curRegion = regionID[owner[curFace]];
-
-        // Debug check
-        if (regionID[owner[curFace]] != regionID[neighbour[curFace]])
+        if (mesh.isInternalFace(curFace))
         {
-            FatalErrorIn
-            (
-                "void Foam::oversetAdjustPhi\n"
-                "(\n"
-                "    surfaceScalarField& phi,\n"
-                "    volVectorField& U\n"
-                ")"
-            )   << "Region index different for owner and neighbour of face "
-                << curFace
-                << abort(FatalError);
-        }
+            // Internal face
 
-        if (!curFlip)
-        {
-            // Correct orientation
-            if (phiIn[curFace] < 0)
+            // Get region index
+            const label curRegion = regionID[owner[curFace]];
+
+            // Debug check
+            if (regionID[owner[curFace]] != regionID[neighbour[curFace]])
             {
-                // Incoming flux
-                regionFringeIn[curRegion] -= phiIn[curFace];
+                FatalErrorIn
+                (
+                    "void Foam::oversetAdjustPhi\n"
+                    "(\n"
+                    "    surfaceScalarField& phi,\n"
+                    "    volVectorField& U\n"
+                    ")"
+                )   << "Region index different for owner and neighbour "
+                    << "of face " << curFace
+                    << abort(FatalError);
+            }
+
+            if (!curFlip)
+            {
+                // Correct orientation
+                if (phiIn[curFace] < 0)
+                {
+                    // Incoming flux
+                    regionFringeIn[curRegion] -= phiIn[curFace];
+                }
+                else
+                {
+                    // Outgoing flux
+                    regionFringeOut[curRegion] += phiIn[curFace];
+                }
             }
             else
             {
-                // Outgoing flux
-                regionFringeOut[curRegion] += phiIn[curFace];
+                // Flipped face; opposite sign of flux
+                if (phiIn[curFace] > 0)
+                {
+                    // Incoming flux
+                    regionFringeIn[curRegion] += phiIn[curFace];
+                }
+                else
+                {
+                    // Outgoing flux
+                    regionFringeOut[curRegion] -= phiIn[curFace];
+                }
             }
         }
         else
         {
-            // Flipped face; opposite sign of flux
-            if (phiIn[curFace] > 0)
+            // Processor boundary fringe face
+            // Find patch and face
+            const label patchI = mesh.boundaryMesh().whichPatch(curFace);
+
+            if (patchI < 0)
             {
-                // Incoming flux
-                regionFringeIn[curRegion] += phiIn[curFace];
+                FatalErrorIn
+                (
+                    "void Foam::oversetAdjustPhi\n"
+                    "(\n"
+                    "    surfaceScalarField& phi,\n"
+                    "    volVectorField& U\n"
+                    ")"
+                )   << "Cannot find patch for fringe face" << curFace
+                    << abort(FatalError);
+            }
+
+            const label faceI = mesh.boundaryMesh()[patchI].whichFace(curFace);
+
+            // Only account for processor face from the owner processor side
+            if (isA<processorPolyPatch>(mesh.boundaryMesh()[patchI]))
+            {
+                const processorPolyPatch& procPatch =
+                    refCast<const processorPolyPatch>
+                    (
+                        mesh.boundaryMesh()[patchI]
+                    );
+
+                if (procPatch.owner())
+                {
+                    // Processor patch, master side
+
+                    // Get region index
+                    const label curRegion =
+                        regionID[mesh.boundary()[patchI].faceCells()[faceI]];
+
+                    // Face always points outwards: no flip
+                    // HJ, 1/May/2015
+                    const scalar curPhi = phi.boundaryField()[patchI][faceI];
+
+                    if (curPhi < 0)
+                    {
+                        // Incoming flux
+                        regionFringeIn[curRegion] += curPhi;
+                    }
+                    else
+                    {
+                        // Outgoing flux
+                        regionFringeOut[curRegion] -= curPhi;
+                    }
+                }
             }
             else
             {
-                // Outgoing flux
-                regionFringeOut[curRegion] -= phiIn[curFace];
+                FatalErrorIn
+                (
+                    "void Foam::oversetAdjustPhi\n"
+                    "(\n"
+                    "    surfaceScalarField& phi,\n"
+                    "    volVectorField& U\n"
+                    ")"
+                )   << "Patch for fringe face" << curFace
+                    << " is not of processor type"
+                    << abort(FatalError);
             }
         }
     }
+
+    // Do a global reduce of fluxes
+    reduce(regionFringeIn, sumOp<scalarField>());
+    reduce(regionFringeOut, sumOp<scalarField>());
 
 //     Info<< "Region fringe balance: in = " << regionFringeIn
 //         << " out = " << regionFringeOut
 //         << " balance = " << regionFringeOut - regionFringeIn
 //         << endl;
+
 
     // Calculate region flux correction
     scalarField regionFluxScale = regionFringeIn/(regionFringeOut + SMALL);
@@ -139,26 +221,68 @@ void Foam::oversetAdjustPhi
         const label curFace = fringeFaces[ffI];
         const bool curFlip = fringeFaceFlips[ffI];
 
-        // Get region index
-        const label curRegion = regionID[owner[curFace]];
-
-        // Scale outgoing flux to match the incoming one
-        if (!curFlip)
+        if (mesh.isInternalFace(curFace))
         {
-            // Correct orientation
-            if (phiIn[curFace] > 0)
+            // Internal face
+
+            // Get region index
+            const label curRegion = regionID[owner[curFace]];
+
+            // Scale outgoing flux to match the incoming one
+            if (!curFlip)
             {
-                // Scale outgoing flux
-                phiIn[curFace] *= regionFluxScale[curRegion];
+                // Correct orientation
+                if (phiIn[curFace] > 0)
+                {
+                    // Scale outgoing flux
+                    phiIn[curFace] *= regionFluxScale[curRegion];
+                }
+            }
+            else
+            {
+                // Flipped face; opposite sign of flux
+                if (phiIn[curFace] < 0)
+                {
+                    // Scale outgoing flux
+                    phiIn[curFace] *= regionFluxScale[curRegion];
+                }
             }
         }
         else
         {
-            // Flipped face; opposite sign of flux
-            if (phiIn[curFace] < 0)
+            // Processor boundary fringe face
+            // Find patch and face
+            const label patchI = mesh.boundaryMesh().whichPatch(curFace);
+
+            const label faceI = mesh.boundaryMesh()[patchI].whichFace(curFace);
+
+            // Only account for processor face from the owner processor side
+
+            const processorPolyPatch& procPatch =
+                refCast<const processorPolyPatch>
+                (
+                    mesh.boundaryMesh()[patchI]
+                );
+
+            if (procPatch.owner())
             {
-                // Scale outgoing flux
-                phiIn[curFace] *= regionFluxScale[curRegion];
+                // Processor patch, master side
+
+                // Get region index
+                const label curRegion =
+                    regionID[mesh.boundary()[patchI].faceCells()[faceI]];
+
+                // Face always points outwards: no flip
+                // HJ, 1/May/2015
+
+                // Get reference to the flux for scaling
+                // Scale outgoing flux only
+                scalar& curPhi = phi.boundaryField()[patchI][faceI];
+
+                if (curPhi > 0)
+                {
+                    curPhi *= regionFluxScale[curRegion];
+                }
             }
         }
     }
