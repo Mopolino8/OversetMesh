@@ -5,7 +5,6 @@
 |   \\  /    A nd           | Web:      http://www.openfoam.org               |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
-
 FoamFile
 {
     version         2.0;
@@ -13,26 +12,23 @@ FoamFile
     class           dictionary;
     object          oversetMeshDict;
 }
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 
 interpolation
 {
     type injection;
 }
 
+holePatches  ();
+
 regions
 (
-    // Background
+    left
     {
         index 0;
 
         // Donor regions
-        donorRegions ( 1 );
-
-        // Names or patches that determine hole cells
-        holePatches ();
+        donorRegions ( right );
 
         fringe
         {
@@ -41,13 +37,11 @@ regions
         }
     }
 
-    // Cylinder
+    right
     {
         index 1;
 
-        donorRegions ( 0 );
-
-        holePatches  ();
+        donorRegions ( left );
 
         fringe
         {
