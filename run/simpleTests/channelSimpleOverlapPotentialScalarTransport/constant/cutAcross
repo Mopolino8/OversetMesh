@@ -1,33 +1,36 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
-| \\      /  F ield         | OpenFOAM Extend Project: Open Source CFD        |
-|  \\    /   O peration     | Version:  1.6-ext                               |
-|   \\  /    A nd           | Web:      www.extend-project.de                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    object      decomposeParDict;
+    class       labelList;
+    location    "constant";
+    object      cutAlong;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains 3;
-
-method simple;
-
-simpleCoeffs
-{
-    n (3 1 1);
-    delta           0.001;
-}
-
-distributed     no;
-
-roots
+60
 (
-);
+    // Left mesh
+    0 0 0 0 0 0
+    0 0 0 0 0 0
+    0 0 0 0 0 0
+    0 0 0 0 0 0
+    0 0 0 0 0 0
+
+    // Right mesh
+    1 1 1 1 1 1
+    1 1 1 1 1 1
+    1 1 1 1 1 1
+    1 1 1 1 1 1
+    1 1 1 1 1 1
+)
+
 
 // ************************************************************************* //

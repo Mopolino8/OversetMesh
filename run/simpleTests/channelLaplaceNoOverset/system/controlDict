@@ -10,46 +10,51 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      fvSchemes;
+    object      controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
-{
-    default Euler;
-}
+application     adjointSimpleFoam;
 
-gradSchemes
-{
-    default         Gauss linear;
-}
+startFrom       startTime;
+// startFrom       latestTime;
 
-divSchemes
-{
-    default         none;
-//     div(phi,T)      Gauss upwind;
-    div(phi,T)      Gauss vanLeer01;
-    div(phi,V)      Gauss upwind;
-}
+startTime       0;
 
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
+stopAt          endTime;
 
-interpolationSchemes
-{
-    default         linear;
-}
+endTime         1;
 
-snGradSchemes
-{
-    default         corrected;
-}
+deltaT          1;
 
-fluxRequired
-{
-    p;
-}
+writeControl    timeStep;
+
+writeInterval   1;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression uncompressed;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+libs
+(
+    "libfoam.so"
+    "libtriSurface.so"
+    "libmeshTools.so"
+    "libsurfMesh.so"
+    "libsampling.so"
+    "libdynamicMesh.so"
+    "liboversetMesh.so"
+);
+
 
 // ************************************************************************* //
