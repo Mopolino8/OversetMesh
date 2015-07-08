@@ -1,0 +1,92 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open source CFD        |
+|  \\    /   O peration     | Version:  1.6-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (1 0 0);
+
+boundaryField
+{
+    oversetFaces
+    {
+        type overset;
+        value uniform (0 0 0);
+        coupledFringe yes;
+
+        setHoleCellValue  yes;
+        holeCellValue     (0 0 0);
+    }
+    x_min
+    {
+        type zeroGradient;
+    }
+    x_max
+    {
+        type zeroGradient;
+    }
+    y_min
+    {
+        type zeroGradient;
+    }
+    y_max
+    {
+        type zeroGradient;
+    }
+    z_min
+    {
+        type zeroGradient;
+    }
+    z_max
+    {
+        type zeroGradient;
+    }
+    hull
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+    sailAll
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+    sternFins
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+    inlet
+    {
+        type            fixedValue;
+        value           uniform (1 0 0);
+    }
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      uniform (1 0 0);
+        value           uniform (1 0 0);
+    }
+    sides
+    {
+        type            inletOutlet;
+        inletValue      uniform (1 0 0);
+        value           uniform (1 0 0);
+    }
+}
+
+
+// ************************************************************************* //

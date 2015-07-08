@@ -1,0 +1,7 @@
+cellSet backFringe new cellToCell background
+
+cellSet backFringe subset boxToCell (-0.15 -0.15 -0.15) (1.2 0.15 0.15)
+
+cellSet backHole new cellToCell backFringe
+cellSet backHole subset boxToCell  (-0.1 -0.1 -0.1) (1.15 0.1 0.1)
+quit

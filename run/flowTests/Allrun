@@ -5,3 +5,5 @@
 
 ( cd staticCylinderSheddingTest ; ./Allrun )
 ( cd navyCylinderSheddingTest ; ./Allrun )
+
+( cd suboffBoxerSmall ; ./Allrun )
