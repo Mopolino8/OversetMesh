@@ -18,7 +18,8 @@ cp -r constant/polyMesh constant/polyMesh-suboff
 # Merge meshes and clean up
 runApplication mergeMeshes .. suboffBoxerSmall . background
 \rm -rf constant/polyMesh
-\mv 0.01/polyMesh constant
+\mv 1/polyMesh constant
+rm -rf 1
 \rm -f constant/polyMesh/pointZones constant/polyMesh/pointZones.gz constant/polyMesh/faceZones constant/polyMesh/faceZones.gz constant/polyMesh/cellZones constant/polyMesh/cellZones.gz
 
 # Make cell zones for all regions and clean up
@@ -26,12 +27,13 @@ runApplication regionCellSets
 runApplication setSet -batch setBatch1.batch
 \rm -f log.setSet
 \rm -f constant/polyMesh/sets/*_old constant/polyMesh/sets/*_old.gz
-\rm -f 
+\rm -f constant/polyMesh/sets/cellRegion0 constant/polyMesh/sets/cellRegion0.gz constant/polyMesh/sets/cellRegion1 constant/polyMesh/sets/cellRegion1.gz
 runApplication setsToZones
 
 # Make fringe
 runApplication setSet -batch setBatch2.batch
 \rm -f constant/polyMesh/sets/*_old constant/polyMesh/sets/*_old.gz
+\rm -f constant/polyMesh/sets/background constant/polyMesh/sets/background.gz constant/polyMesh/sets/suboff constant/polyMesh/sets/suboff.gz
 
 # Set up boundary patches
 \cp -f boundary constant/polyMesh/boundary
