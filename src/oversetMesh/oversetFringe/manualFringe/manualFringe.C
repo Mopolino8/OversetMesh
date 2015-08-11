@@ -26,7 +26,7 @@ License
 
 #include "manualFringe.H"
 #include "oversetRegion.H"
-#include "Time.H"
+#include "foamTime.H"
 #include "cellSet.H"
 #include "addToRunTimeSelectionTable.H"
 

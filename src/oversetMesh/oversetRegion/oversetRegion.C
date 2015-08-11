@@ -29,6 +29,7 @@ License
 #include "oversetFringe.H"
 #include "polyPatchID.H"
 #include "triSurfaceTools.H"
+#include "cellSet.H"
 #include "demandDrivenData.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -252,14 +253,14 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                             // Found a hit.  Additional check for point in cell
                             // Note: Consider removing additional test to
                             // improve robustness.  HJ, 1/Jun/2015
-                            if
-                            (
-                                mesh_.pointInCellBB
-                                (
-                                    curP,
-                                    curDonors[pih.index()]
-                                )
-                            )
+//                             if
+//                             (
+//                                 mesh_.pointInCellBB
+//                                 (
+//                                     curP,
+//                                     curDonors[pih.index()]
+//                                 )
+//                             )
                             {
                                 // Identified local donor.  Set donor data
                                 // to let acceptor know about the match
@@ -565,14 +566,14 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                     // Found a hit.  Additional check for point in cell
                     // Note: Consider removing additional test to improve
                     // robustness.  HJ, 1/Jun/2015
-                    if
-                    (
-                        mesh_.pointInCellBB
-                        (
-                            curP,
-                            curDonors[pih.index()]
-                        )
-                    )
+//                     if
+//                     (
+//                         mesh_.pointInCellBB
+//                         (
+//                             curP,
+//                             curDonors[pih.index()]
+//                         )
+//                     )
                     {
                         // Identified donor.  Set donor data
                         // to let acceptor know about the match
@@ -589,28 +590,36 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
         // Check if donors have been found for all local acceptors
         {
-            label nUncoveredAcceptors = 0;
+            labelHashSet uncoveredAcceptors;
 
             forAll (DA, daI)
             {
                 if (!DA[daI].donorFound())
                 {
-                    // Donor not found =
-                    Info<< "Donor not found for cell "
-                        << DA[daI].acceptorCell()
-                        << endl;
-
-                    nUncoveredAcceptors++;
+                    uncoveredAcceptors.insert(DA[daI].acceptorCell());
                 }
             }
 
             // Check for uncovered acceptors
-            if (nUncoveredAcceptors > 0)
+            if (!uncoveredAcceptors.empty())
             {
+                // Write uncovered cellSet
+                const fileName uncoveredSetName(name() + "uncoveredAcceptors");
+
+                cellSet
+                (
+                    mesh(),
+                    uncoveredSetName,
+                    uncoveredAcceptors
+                ).write();
+
                 FatalErrorIn
                 (
                     "void oversetRegion::calcDonorAcceptorCells() const"
-                )   << "Inconsistency in donor cell data assembly"
+                )   << "Inconsistency in donor cell data assembly for region "
+                    << name() << ".  Found " << uncoveredAcceptors.size() 
+                    << " uncovered acceptors" << nl
+                    << "Writing " << uncoveredSetName
                     << abort(FatalError);
             }
         }

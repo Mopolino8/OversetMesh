@@ -42,7 +42,7 @@ SourceFiles
 #define oversetMesh_H
 
 #include "MeshObject.H"
-#include "Time.H"
+#include "foamTime.H"
 #include "dictionary.H"
 #include "fvMesh.H"
 #include "oversetRegion.H"
