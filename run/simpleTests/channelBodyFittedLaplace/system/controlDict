@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     adjointSimpleFoam;
+application     laplacianFoam;
 
 startFrom       startTime;
 // startFrom       latestTime;

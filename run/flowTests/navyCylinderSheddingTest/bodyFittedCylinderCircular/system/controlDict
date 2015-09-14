@@ -50,7 +50,6 @@ runTimeModifiable yes;
 libs
 (
     "libfoam.so"
-    "libtriSurface.so"
     "libmeshTools.so"
     "libsurfMesh.so"
     "libsampling.so"

@@ -31,17 +31,17 @@ regions
         // Donor regions
         donorRegions ( front );
 
-        fringe
-        {
-            type manual;
-            holes       "backHole";
-            acceptors   "backFringe";
-        }
-
 //         fringe
 //         {
-//             type overlap;
+//             type manual;
+//             holes       "backHole";
+//             acceptors   "backFringe";
 //         }
+
+        fringe
+        {
+            type overlap;
+        }
     }
 
     front

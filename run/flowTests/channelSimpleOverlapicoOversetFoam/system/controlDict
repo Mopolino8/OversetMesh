@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     adjointSimpleFoam;
+application     icoOversetFoam;
 
 startFrom       startTime;
 // startFrom       latestTime;
@@ -48,7 +48,6 @@ runTimeModifiable yes;
 libs
 (
     "libfoam.so"
-    "libtriSurface.so"
     "libmeshTools.so"
     "libsurfMesh.so"
     "libsampling.so"
