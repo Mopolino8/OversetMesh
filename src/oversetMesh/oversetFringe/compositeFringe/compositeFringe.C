@@ -66,7 +66,7 @@ void Foam::compositeFringe::readBaseFringes(const dictionary& dict)
 
 void Foam::compositeFringe::calcAddressing() const
 {
-    if (holesPtr_ || acceptorsPtr_)
+    if (fringeHolesPtr_ || acceptorsPtr_)
     {
         FatalErrorIn
         (
@@ -82,12 +82,12 @@ void Foam::compositeFringe::calcAddressing() const
     labelHashSet acceptorSet;
 
     // Make a hash set to collect hole points
-    labelHashSet holeSet;
+    labelHashSet fringeHoleSet;
 
     // Go through all base fringes and record holes and acceptors
     forAll (baseFringes_, bfI)
     {
-        const labelList& ch = baseFringes_[bfI].holes();
+        const labelList& ch = baseFringes_[bfI].fringeHoles();
 
         forAll (ch, chI)
         {
@@ -112,8 +112,8 @@ void Foam::compositeFringe::calcAddressing() const
         }
     }
 
-    // Collect holes
-    holesPtr_ = new labelList(holeSet.sortedToc());
+    // Collect fringeHoles
+    fringeHolesPtr_ = new labelList(fringeHoleSet.sortedToc());
 
     // Collect acceptors
     acceptorsPtr_ = new labelList(acceptorSet.sortedToc());
@@ -122,7 +122,7 @@ void Foam::compositeFringe::calcAddressing() const
 
 void Foam::compositeFringe::clearAddressing()
 {
-    deleteDemandDrivenData(holesPtr_);
+    deleteDemandDrivenData(fringeHolesPtr_);
     deleteDemandDrivenData(acceptorsPtr_);
 }
 
@@ -138,7 +138,7 @@ Foam::compositeFringe::compositeFringe
 )
 :
     oversetFringe(mesh, region, dict),
-    holesPtr_(NULL),
+    fringeHolesPtr_(NULL),
     acceptorsPtr_(NULL)
 {
     // Read fringes
@@ -156,14 +156,14 @@ Foam::compositeFringe::~compositeFringe()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::compositeFringe::holes() const
+const Foam::labelList& Foam::compositeFringe::fringeHoles() const
 {
-    if (!holesPtr_)
+    if (!fringeHolesPtr_)
     {
         calcAddressing();
     }
 
-    return *holesPtr_;
+    return *fringeHolesPtr_;
 }
 
 

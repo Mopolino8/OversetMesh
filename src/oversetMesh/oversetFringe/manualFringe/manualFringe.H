@@ -63,7 +63,7 @@ class manualFringe
         word acceptorsSetName_;
 
         //- Hole cells
-        mutable labelList* holesPtr_;
+        mutable labelList* fringeHolesPtr_;
 
         //- Acceptor cells
         mutable labelList* acceptorsPtr_;
@@ -110,7 +110,9 @@ public:
     // Member Functions
 
         //- Return list of deactivated (hole) cells
-        virtual const labelList& holes() const;
+        //  Fringe hole cells are collected in addition to geometric hole
+        //  cells, which fall outside of all donor regions
+        virtual const labelList& fringeHoles() const;
 
         //- Return list of acceptor cells
         virtual const labelList& acceptors() const;

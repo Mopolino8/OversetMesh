@@ -150,7 +150,9 @@ public:
 
 
         //- Return list of deactivated (hole) cells
-        virtual const labelList& holes() const = 0;
+        //  Fringe hole cells are collected in addition to geometric hole
+        //  cells, which fall outside of all donor regions
+        virtual const labelList& fringeHoles() const = 0;
 
         //- Return list of acceptor cells
         virtual const labelList& acceptors() const = 0;

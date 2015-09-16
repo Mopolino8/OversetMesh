@@ -669,7 +669,7 @@ void Foam::oversetRegion::calcHoleCells() const
 
     // Mark all cells indicated by fringe
     // Mask additional hole cells as defined by the fringe
-    const labelList& fringeHoles = fringePtr_().holes();
+    const labelList& fringeHoles = fringePtr_().fringeHoles();
 
     forAll (fringeHoles, i)
     {
