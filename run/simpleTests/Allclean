@@ -8,6 +8,8 @@
 ( cd channelSimpleOverlapLaplaceCutAcross ; ./Allclean )
 ( cd channelSimpleOverlapLaplaceCutFringe ; ./Allclean )
 
+( cd cylinderInSquareLaplaceAutoFringe ; ./Allclean )
+
 ( cd channelSimpleOverlapPotentialScalarTransport ; ./Allclean )
 
 ( cd cylinderInSquareLaplace ; ./Allclean )
