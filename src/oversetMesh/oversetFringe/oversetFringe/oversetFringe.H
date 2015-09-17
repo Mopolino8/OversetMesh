@@ -158,7 +158,7 @@ public:
         virtual const labelList& acceptors() const = 0;
 
         //- Update the fringe
-        virtual void update() = 0;
+        virtual void update() const = 0;
 };
 
 

@@ -99,7 +99,7 @@ void Foam::faceCellsFringe::calcAddressing() const
 }
 
 
-void Foam::faceCellsFringe::clearAddressing()
+void Foam::faceCellsFringe::clearAddressing() const
 {
     deleteDemandDrivenData(fringeHolesPtr_);
     deleteDemandDrivenData(acceptorsPtr_);
@@ -155,9 +155,11 @@ const Foam::labelList& Foam::faceCellsFringe::acceptors() const
 }
 
 
-void Foam::faceCellsFringe::update()
+void Foam::faceCellsFringe::update() const
 {
-    Info<< "faceCellsFringe::update()" << endl;
+    Info<< "faceCellsFringe::update() const" << endl;
+
+    clearAddressing();
 }
 
 

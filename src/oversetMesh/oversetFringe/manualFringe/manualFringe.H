@@ -82,7 +82,7 @@ class manualFringe
         void calcAddressing() const;
 
         // Clear addressing
-        void clearAddressing();
+        void clearAddressing() const;
 
 
 public:
@@ -118,7 +118,7 @@ public:
         virtual const labelList& acceptors() const;
 
         //- Update the fringe
-        virtual void update();
+        virtual void update() const;
 };
 
 

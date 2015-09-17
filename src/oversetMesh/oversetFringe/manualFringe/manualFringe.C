@@ -112,7 +112,7 @@ void Foam::manualFringe::calcAddressing() const
 }
 
 
-void Foam::manualFringe::clearAddressing()
+void Foam::manualFringe::clearAddressing() const
 {
     deleteDemandDrivenData(fringeHolesPtr_);
     deleteDemandDrivenData(acceptorsPtr_);
@@ -169,9 +169,11 @@ const Foam::labelList& Foam::manualFringe::acceptors() const
 }
 
 
-void Foam::manualFringe::update()
+void Foam::manualFringe::update() const
 {
-    Info<< "manualFringe::update()" << endl;
+    Info<< "manualFringe::update() const" << endl;
+
+    clearAddressing();
 }
 
 

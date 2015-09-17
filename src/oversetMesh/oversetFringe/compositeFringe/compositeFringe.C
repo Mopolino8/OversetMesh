@@ -178,8 +178,10 @@ const Foam::labelList& Foam::compositeFringe::acceptors() const
 }
 
 
-void Foam::compositeFringe::update()
+void Foam::compositeFringe::update() const
 {
+    Info<< "void compositeFringe::update() const" << endl;
+
     forAll (baseFringes_, bfI)
     {
         baseFringes_[bfI].update();

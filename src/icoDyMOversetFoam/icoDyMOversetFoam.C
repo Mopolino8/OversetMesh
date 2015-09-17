@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 #   include "setRootCase.H"
 #   include "createTime.H"
 #   include "createDynamicFvMesh.H"
-#   include "createOversetMasks.H"
 #   include "createFields.H"
 #   include "initContinuityErrs.H"
 
@@ -64,7 +63,7 @@ int main(int argc, char *argv[])
         bool meshChanged = mesh.update();
         reduce(meshChanged, orOp<bool>());
 
-#       include "dynamicOversetMasks.H"
+#       include "createOversetMasks.H"
 
         // Make the fluxes relative to the mesh motion
         fvc::makeRelative(phi, U);

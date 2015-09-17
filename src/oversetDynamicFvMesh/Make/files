@@ -1,3 +1,4 @@
-regionSolidBodyMotionFvMesh/regionSolidBodyMotionFvMesh.C
+movingOversetRegion/movingOversetRegion.C
+oversetSolidBodyMotionFvMesh/oversetSolidBodyMotionFvMesh.C
 
 LIB = $(FOAM_USER_LIBBIN)/liboversetDynamicFvMesh

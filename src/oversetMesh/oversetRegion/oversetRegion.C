@@ -41,6 +41,7 @@ Foam::oversetRegion::donorFraction
     30
 );
 
+
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 void Foam::oversetRegion::calcDonorRegions() const
@@ -1006,6 +1007,15 @@ void Foam::oversetRegion::calcHoleTriMesh() const
     Info<< "Region " << name() << ": "
         << holeTriMeshPtr_->size() << " triangles in hole cutting"
         << endl;
+
+    // Debug: write holeTriMesh
+    if (Pstream::master())
+    {
+        if (!holeTriMeshPtr_->empty())
+        {
+            holeTriMeshPtr_->write(word("holeTriSurface_") + name() + ".vtk");
+        }
+    }
 }
 
 
@@ -1045,7 +1055,7 @@ void Foam::oversetRegion::calcCellSearch() const
 }
 
 
-void Foam::oversetRegion::clearOut()
+void Foam::oversetRegion::clearOut() const
 {
     deleteDemandDrivenData(donorRegionsPtr_);
     deleteDemandDrivenData(acceptorRegionsPtr_);
@@ -1241,6 +1251,16 @@ Foam::oversetRegion::cellSearch() const
     }
 
     return *cellSearchPtr_;
+}
+
+
+void Foam::oversetRegion::update() const
+{
+    Info<< "oversetRegion " << name() << " update" << endl;
+
+    fringePtr_->update();
+
+    clearOut();
 }
 
 
