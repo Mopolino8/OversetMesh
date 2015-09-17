@@ -15,21 +15,16 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // dynamicFvMesh   staticFvMesh;
-dynamicFvMesh   regionSolidBodyMotionFvMesh;
+dynamicFvMesh   oversetSolidBodyMotionFvMesh;
 
-regionSolidBodyMotionFvMeshCoeffs
+oversetSolidBodyMotionFvMeshCoeffs
 {
     motionFunctions
     (
+        front
         {
-            solidBodyMotionFunction     translation;
-            translationCoeffs
-            {
-                velocity (0 0 0);
-            }
-        }
+            movingZones ( front );
 
-        {
 //             solidBodyMotionFunction     translation;
 //             translationCoeffs
 //             {
@@ -45,5 +40,6 @@ regionSolidBodyMotionFvMeshCoeffs
         }
     );
 }
+
 
 // ************************************************************************* //
