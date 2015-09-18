@@ -43,10 +43,8 @@ void Foam::overlapFringe::calcAddressing() const
 {
     if (acceptorsPtr_)
     {
-        FatalErrorIn
-        (
-            "void Foam::overlapFringe::calcAddressing() const"
-        )   << "Acceptor addressing already calculated"
+        FatalErrorIn("void overlapFringe::calcAddressing() const")
+            << "Acceptor addressing already calculated"
             << abort(FatalError);
     }
 
@@ -109,21 +107,121 @@ void Foam::overlapFringe::calcAddressing() const
     }
 
     // Perform search to see which cells can find valid donors
-    const labelList& donorRegions = region().donorRegions();
+    const labelList& dr = region().donorRegions();
 
     if (Pstream::parRun())
     {
-        FatalError<< "MISSING CODE" << endl;
+        // Make a global list of all acceptors
+        donorAcceptorListList globalDonorAcceptor(Pstream::nProcs());
+
+        // Copy local acceptor list into processor slot
+        globalDonorAcceptor[Pstream::myProcNo()] = acCand;
+
+        // Gather-scatter acceptor data before donor indentification
+        Pstream::gatherList(globalDonorAcceptor);
+        Pstream::scatterList(globalDonorAcceptor);
+
+        // Donor identification: search for donors for all processors
+        // using local donor regions
+        
+        // Go through all donor regions and identify donor cells
+        forAll (dr, drI)
+        {
+            if (dr[drI] == region().index())
+            {
+                FatalErrorIn("void overlapFringe::calcAddressing() const")
+                    << "Region " << region().name()
+                    << " specified as the donor of itself.  "
+                    << "List of donors: " << dr << nl
+                    << "This is not allowed: check oversetMesh definition"
+                    << abort(FatalError);
+            }
+
+            // Get reference to current donor region
+            const oversetRegion& curDonorRegion =
+                region().overset().regions()[dr[drI]];
+
+            const labelList& curDonors = curDonorRegion.eligibleDonors();
+
+            // Get donor tree
+            const indexedOctree<treeDataCell>& tree =
+                curDonorRegion.cellSearch();
+
+            // If the tree is empty on local processor, do not search
+            if (tree.nodes().empty())
+            {
+                continue;
+            }
+
+            scalar span = tree.bb().mag();
+
+            // Go through all processors and see if local donor can be found
+
+            // For all acceptors, perform donor search
+            // Searching for donor cells on local processors using the
+            // requested acceptor data from all processors
+            forAll (globalDonorAcceptor, procI)
+            {
+                List<donorAcceptor>& curDA = globalDonorAcceptor[procI];
+
+                forAll (curDA, daI)
+                {
+                    if (!curDA[daI].donorFound())
+                    {
+                        const vector& curP = curDA[daI].acceptorPoint();
+
+                        // Find nearest cell with octree
+                        // Note: octree only contains eligible cells
+                        // HJ, 10/Jan/2015
+                        pointIndexHit pih = tree.findNearest(curP, span);
+
+                        if (pih.hit())
+                        {
+                            // Note: this check needs to be improved because
+                            // pointInCell is not sufficiently robust.
+                            // HJ, 16/Sep/2015
+                            if
+                            (
+                                mesh.pointInCell
+                                (
+                                    curP,
+                                    curDonors[pih.index()]
+                                )
+                            )
+                            {
+                                // Found nearest cell in donor region.
+                                // This cell is a potential acceptor
+                                curDA[daI].setDonor
+                                (
+                                    curDonors[pih.index()],
+                                    Pstream::myProcNo(),
+                                    cc[curDonors[pih.index()]]
+                                );
+                            }
+                        }
+                    }
+                }
+            } // end for all processor lists
+        } // end for all dr
     }
     else
     {
         // Serial run
-
-        forAll (donorRegions, regionI)
+        forAll (dr, drI)
         {
+            if (dr[drI] == region().index())
+            {
+                FatalErrorIn("void overlapFringe::calcAddressing() const")
+                    << "Region " << region().name()
+                    << " specified as the donor of itself.  "
+                    << "List of donors: " << dr << nl
+                    << "This is not allowed: check oversetMesh definition"
+                    << abort(FatalError);
+            }
+
             // Get reference to current donor region
             const oversetRegion& curDonorRegion =
-                region().overset().regions()[donorRegions[regionI]];
+                region().overset().regions()[dr[drI]];
 
             const labelList& curDonors = curDonorRegion.eligibleDonors();
 
@@ -173,18 +271,13 @@ void Foam::overlapFringe::calcAddressing() const
                     }
                 }
             }
-        } // end for all donorRegions
-
-        // Check the cells for which a donor is found
-
+        } // end for all dr
     }
 
     // Collected all overlap donor cells
 
     // Note: add fringe minimisation here
     // HJ, 20/Jun/2015
-
-
 
     // Collect acceptors
     acceptorsPtr_ = new labelList(acCand.size());
