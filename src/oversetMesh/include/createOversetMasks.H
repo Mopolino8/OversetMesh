@@ -52,5 +52,5 @@
             }
         }
 
-        regionIndex.write();
+//         regionIndex.write();
     }
