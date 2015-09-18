@@ -52,6 +52,7 @@ libs
     "libsurfMesh.so"
     "libsampling.so"
     "libdynamicMesh.so"
+    "libdynamicFvMesh.so"
     "liboversetMesh.so"
     "liboversetDynamicFvMesh.so"
 );
