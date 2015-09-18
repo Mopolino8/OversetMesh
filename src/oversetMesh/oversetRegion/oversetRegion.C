@@ -161,29 +161,28 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
     // Get list of local acceptor cell labels from fringe
     const labelList& a = fringePtr_().acceptors();
 
+    // Prepare local acceptor list
+    acceptorCellsPtr_ = new donorAcceptorList(a.size());
+    donorAcceptorList& localDA = *acceptorCellsPtr_;
+
+    // Insert local acceptors into the list
+    forAll (a, aI)
+    {
+        localDA[aI] = donorAcceptor
+        (
+            a[aI],
+            Pstream::myProcNo(),
+            cc[a[aI]]
+        );
+    }
+
     if (Pstream::parRun())
     {
         // Make a global list of all acceptors
         donorAcceptorListList globalDonorAcceptor(Pstream::nProcs());
 
-        // Memory management
-        {
-            // Insert local acceptors into a global list
-            donorAcceptorList& curDA =
-                globalDonorAcceptor[Pstream::myProcNo()];
-
-            curDA.setSize(a.size());
-
-            forAll (a, aI)
-            {
-                curDA[aI] = donorAcceptor
-                (
-                    a[aI],
-                    Pstream::myProcNo(),
-                    cc[a[aI]]
-                );
-            }
-        }
+        // Copy local acceptor list into processor slot
+        globalDonorAcceptor[Pstream::myProcNo()] = localDA;
 
         // Gather-scatter acceptor data before donor indentification
         Pstream::gatherList(globalDonorAcceptor);
@@ -423,29 +422,24 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
         // Check if donors have been found for all local acceptors
         {
             // Grab local acceptors
-            acceptorCellsPtr_ = new donorAcceptorList
-            (
-                globalDonorAcceptor[Pstream::myProcNo()]
-            );
-
-            donorAcceptorList& curDA = *acceptorCellsPtr_;
+            localDA = globalDonorAcceptor[Pstream::myProcNo()];
 
             labelList nDonorsFromProc(Pstream::nProcs(), 0);
 
             label nUncoveredAcceptors = 0;
 
-            forAll (curDA, daI)
+            forAll (localDA, daI)
             {
-                if (!curDA[daI].donorFound())
+                if (!localDA[daI].donorFound())
                 {
                     // Donor not found globally
                     WarningIn
                     (
                         "void oversetRegion::calcDonorAcceptorCells() const"
                     )   << "Donor not found for cell "
-                        << curDA[daI].acceptorCell() << " on processor "
-                        << curDA[daI].acceptorProcNo()
-                        << " centre = " << curDA[daI].acceptorPoint()
+                        << localDA[daI].acceptorCell() << " on processor "
+                        << localDA[daI].acceptorProcNo()
+                        << " centre = " << localDA[daI].acceptorPoint()
                         << endl;
 
                     nUncoveredAcceptors++;
@@ -453,12 +447,12 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                 else
                 {
                     // Assemble donor statistics
-                    nDonorsFromProc[curDA[daI].donorProcNo()]++;
+                    nDonorsFromProc[localDA[daI].donorProcNo()]++;
                 }
             }
 
 //             Pout<< "Region " << name()
-//                 << " number of processor donors for " << curDA.size()
+//                 << " number of processor donors for " << localDA.size()
 //                 << " local acceptors per processor: " << nDonorsFromProc
 //                 << endl;
 
@@ -476,7 +470,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
             if
             (
                 nUncoveredAcceptors == 0
-             && sum(nDonorsFromProc) != curDA.size()
+             && sum(nDonorsFromProc) != localDA.size()
             )
             {
                 FatalErrorIn
@@ -487,6 +481,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
             }
         }
 
+        // Grab local parallel donors
         donorCellsPtr_ = new donorAcceptorList();
         donorAcceptorList& d = *donorCellsPtr_;
 
@@ -514,20 +509,6 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
         // contain identical data.  This is duplicated for the moment
         // HJ, 1/May/2015
 
-        acceptorCellsPtr_ = new donorAcceptorList(a.size());
-        donorAcceptorList& DA = *acceptorCellsPtr_;
-
-        // Insert local acceptors into the list
-        forAll (a, aI)
-        {
-            DA[aI] = donorAcceptor
-            (
-                a[aI],
-                Pstream::myProcNo(),
-                cc[a[aI]]
-            );
-        }
-
         // Go through all donor regions and identify donor cells
         forAll (dr, drI)
         {
@@ -553,9 +534,9 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
             scalar span = tree.bb().mag();
 
-            forAll (DA, daI)
+            forAll (localDA, daI)
             {
-                const vector& curP = DA[daI].acceptorPoint();
+                const vector& curP = localDA[daI].acceptorPoint();
 
                 // Find nearest cell with octree
                 // Note: octree only contains eligible cells
@@ -578,7 +559,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                     {
                         // Identified donor.  Set donor data
                         // to let acceptor know about the match
-                        DA[daI].setDonor
+                        localDA[daI].setDonor
                         (
                             curDonors[pih.index()],
                             Pstream::myProcNo(),
@@ -593,11 +574,11 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
         {
             labelHashSet uncoveredAcceptors;
 
-            forAll (DA, daI)
+            forAll (localDA, daI)
             {
-                if (!DA[daI].donorFound())
+                if (!localDA[daI].donorFound())
                 {
-                    uncoveredAcceptors.insert(DA[daI].acceptorCell());
+                    uncoveredAcceptors.insert(localDA[daI].acceptorCell());
                 }
             }
 
@@ -626,13 +607,13 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
         }
 
         Info<< "Serial region " << name()
-            << " number of donors and acceptors: " << DA.size()
+            << " number of donors and acceptors: " << localDA.size()
             << endl;
 
         // Since in serial execution donor and acceptor data is identical
         // copy the acceptor list into donor list after the search and check
         // have been performed
-        donorCellsPtr_ = new donorAcceptorList(DA);
+        donorCellsPtr_ = new donorAcceptorList(localDA);
     }
 }
 
