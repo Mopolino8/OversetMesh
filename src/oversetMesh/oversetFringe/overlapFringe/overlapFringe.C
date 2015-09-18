@@ -203,6 +203,84 @@ void Foam::overlapFringe::calcAddressing() const
                 }
             } // end for all processor lists
         } // end for all dr
+
+        // Gather-scatter acceptor data after donor search
+
+        // At this point, each processor has filled parts of every other
+        // processors's list.  Therefore, a simple gather-scatter will not do
+        // Algorithm:
+        // - send all processor data to master
+        // - master recombines
+        // - scatter to all processors
+        if (Pstream::master())
+        {
+            // Receive data from all processors and recombine
+            for (label procI = 1; procI < Pstream::nProcs(); procI++)
+            {
+                // Receive list from slave
+                IPstream fromSlave
+                (
+                    Pstream::blocking,
+                    procI
+                );
+
+                donorAcceptorListList otherDonorAcceptor(fromSlave);
+
+                // Perform recombination
+                // If slave has found the acceptor and recombined list
+                // did not, copy the data from the slave into the recombined
+                // list
+                // If two processors have found the acceptor, report error
+                forAll (globalDonorAcceptor, pI)
+                {
+                    // Get reference to recombined list
+                    donorAcceptorList& recombined =
+                        globalDonorAcceptor[pI];
+
+                    // Get reference to candidate list
+                    const donorAcceptorList& candidate =
+                        otherDonorAcceptor[pI];
+
+                    // Compare candidate with recombined list
+                    // If candidate has found the donor, record it in the
+                    // recombined list
+                    forAll (candidate, cI)
+                    {
+                        if (candidate[cI].donorFound())
+                        {
+                            if (!recombined[cI].donorFound())
+                            {
+                                // Candidate has found the donor
+                                // Record donor and donor processor
+                                recombined[cI].setDonor
+                                (
+                                    candidate[cI].donorCell(),
+                                    candidate[cI].donorProcNo(),
+                                    candidate[cI].donorPoint()
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Slave processor: send global list to master
+            OPstream toMaster
+            (
+                Pstream::nonBlocking,
+                Pstream::masterNo()
+            );
+
+            toMaster << globalDonorAcceptor;
+        }
+
+        // Scatter recombined list to all processors
+        Pstream::scatter(globalDonorAcceptor);
+
+        // Copy local acceptor list from processor slot
+        acCand = globalDonorAcceptor[Pstream::myProcNo()];
     }
     else
     {
@@ -297,7 +375,7 @@ void Foam::overlapFringe::calcAddressing() const
 
     acc.setSize(nAcc);
 
-    Info<< "Region " <<  region().name() << " found " << nAcc
+    Pout<< "Region " <<  region().name() << " found " << nAcc
         << " overlap acceptors"
         << endl;
 }
