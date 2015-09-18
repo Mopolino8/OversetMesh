@@ -314,7 +314,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                 // If slave has found the acceptor and recombined list
                 // did not, copy the data from the slave into the recombined
                 // list
-                // If two processors have found the acceptor, report error
+                // If two processors have found the acceptor, take closer hit
                 forAll (globalDonorAcceptor, pI)
                 {
                     // Get reference to recombined list
@@ -372,8 +372,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
             {
                 WarningIn
                 (
-                    "void oversetRegion::"
-                    "calcDonorAcceptorCells() const"
+                    "void oversetRegion::calcDonorAcceptorCells() const"
                 )   << "Region " << name()
                     << ": Found " << nMultipleHits
                     << " multiple parallel donor hits.  "
