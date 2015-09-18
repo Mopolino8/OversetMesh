@@ -1,9 +1,9 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
-| \\      /  F ield         | OpenFOAM Extend Project: Open Source CFD        |
-|  \\    /   O peration     | Version:  1.6-ext                               |
-|   \\  /    A nd           | Web:      www.extend-project.de                 |
-|    \\/     M anipulation  |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
@@ -15,21 +15,16 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // dynamicFvMesh   staticFvMesh;
-dynamicFvMesh   regionSolidBodyMotionFvMesh;
+dynamicFvMesh   oversetSolidBodyMotionFvMesh;
 
-regionSolidBodyMotionFvMeshCoeffs
+oversetSolidBodyMotionFvMeshCoeffs
 {
     motionFunctions
     (
+        front
         {
-            solidBodyMotionFunction     translation;
-            translationCoeffs
-            {
-                velocity (0 0 0);
-            }
-        }
+            movingZones ( front );
 
-        {
 //             solidBodyMotionFunction     translation;
 //             translationCoeffs
 //             {
@@ -45,5 +40,6 @@ regionSolidBodyMotionFvMeshCoeffs
         }
     );
 }
+
 
 // ************************************************************************* //

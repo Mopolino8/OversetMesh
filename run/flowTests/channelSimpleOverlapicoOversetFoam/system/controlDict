@@ -1,9 +1,9 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
-| \\      /  F ield         | OpenFOAM Extend Project: Open Source CFD        |
-|  \\    /   O peration     | Version:  1.6-ext                               |
-|   \\  /    A nd           | Web:      www.extend-project.de                 |
-|    \\/     M anipulation  |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     adjointSimpleFoam;
+application     icoOversetFoam;
 
 startFrom       startTime;
 // startFrom       latestTime;
@@ -48,7 +48,6 @@ runTimeModifiable yes;
 libs
 (
     "libfoam.so"
-    "libtriSurface.so"
     "libmeshTools.so"
     "libsurfMesh.so"
     "libsampling.so"

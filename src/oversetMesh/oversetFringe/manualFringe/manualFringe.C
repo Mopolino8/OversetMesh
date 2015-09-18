@@ -42,7 +42,7 @@ namespace Foam
 
 void Foam::manualFringe::calcAddressing() const
 {
-    if (holesPtr_ || acceptorsPtr_)
+    if (fringeHolesPtr_ || acceptorsPtr_)
     {
         FatalErrorIn
         (
@@ -51,7 +51,7 @@ void Foam::manualFringe::calcAddressing() const
             << abort(FatalError);
     }
 
-    holesPtr_ = new labelList
+    fringeHolesPtr_ = new labelList
     (
         cellSet
         (
@@ -79,7 +79,7 @@ void Foam::manualFringe::calcAddressing() const
     const cellZone& rcz = region().zone();
 
     // Check holes
-    const labelList& h = *holesPtr_;
+    const labelList& h = *fringeHolesPtr_;
 
     forAll (h, holeI)
     {
@@ -112,9 +112,9 @@ void Foam::manualFringe::calcAddressing() const
 }
 
 
-void Foam::manualFringe::clearAddressing()
+void Foam::manualFringe::clearAddressing() const
 {
-    deleteDemandDrivenData(holesPtr_);
+    deleteDemandDrivenData(fringeHolesPtr_);
     deleteDemandDrivenData(acceptorsPtr_);
 }
 
@@ -132,7 +132,7 @@ Foam::manualFringe::manualFringe
     oversetFringe(mesh, region, dict),
     holesSetName_(dict.lookup("holes")),
     acceptorsSetName_(dict.lookup("acceptors")),
-    holesPtr_(NULL),
+    fringeHolesPtr_(NULL),
     acceptorsPtr_(NULL)
 {}
 
@@ -147,14 +147,14 @@ Foam::manualFringe::~manualFringe()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::manualFringe::holes() const
+const Foam::labelList& Foam::manualFringe::fringeHoles() const
 {
-    if (!holesPtr_)
+    if (!fringeHolesPtr_)
     {
         calcAddressing();
     }
 
-    return *holesPtr_;
+    return *fringeHolesPtr_;
 }
 
 
@@ -169,9 +169,11 @@ const Foam::labelList& Foam::manualFringe::acceptors() const
 }
 
 
-void Foam::manualFringe::update()
+void Foam::manualFringe::update() const
 {
-    Info<< "manualFringe::update()" << endl;
+    Info<< "manualFringe::update() const" << endl;
+
+    clearAddressing();
 }
 
 

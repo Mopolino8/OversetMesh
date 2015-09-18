@@ -173,7 +173,7 @@ class oversetRegion
         void calcCellSearch() const;
 
         // Clear all data
-        void clearOut();
+        void clearOut() const;
 
 
 public:
@@ -277,6 +277,10 @@ public:
             //- Return cell octree for search in local region
             //  Only eligible donors are added to the list
             const indexedOctree<treeDataCell>& cellSearch() const;
+
+
+        //- Update for topo change or mesh motion
+        void update() const;
 };
 
 

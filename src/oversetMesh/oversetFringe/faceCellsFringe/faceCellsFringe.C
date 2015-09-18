@@ -95,13 +95,13 @@ void Foam::faceCellsFringe::calcAddressing() const
     acceptorsPtr_ = new labelList(acceptorSet.sortedToc());
 
     // Holes currently empty
-    holesPtr_ = new labelList();
+    fringeHolesPtr_ = new labelList();
 }
 
 
-void Foam::faceCellsFringe::clearAddressing()
+void Foam::faceCellsFringe::clearAddressing() const
 {
-    deleteDemandDrivenData(holesPtr_);
+    deleteDemandDrivenData(fringeHolesPtr_);
     deleteDemandDrivenData(acceptorsPtr_);
 }
 
@@ -118,7 +118,7 @@ Foam::faceCellsFringe::faceCellsFringe
 :
     oversetFringe(mesh, region, dict),
     patchNames_(dict.lookup("patches")),
-    holesPtr_(NULL),
+    fringeHolesPtr_(NULL),
     acceptorsPtr_(NULL)
 {}
 
@@ -133,14 +133,14 @@ Foam::faceCellsFringe::~faceCellsFringe()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::faceCellsFringe::holes() const
+const Foam::labelList& Foam::faceCellsFringe::fringeHoles() const
 {
-    if (!holesPtr_)
+    if (!fringeHolesPtr_)
     {
         calcAddressing();
     }
 
-    return *holesPtr_;
+    return *fringeHolesPtr_;
 }
 
 
@@ -155,9 +155,11 @@ const Foam::labelList& Foam::faceCellsFringe::acceptors() const
 }
 
 
-void Foam::faceCellsFringe::update()
+void Foam::faceCellsFringe::update() const
 {
-    Info<< "faceCellsFringe::update()" << endl;
+    Info<< "faceCellsFringe::update() const" << endl;
+
+    clearAddressing();
 }
 
 

@@ -59,8 +59,8 @@ class faceCellsFringe
         //- Patch names
         wordList patchNames_;
 
-        //- Hole cells
-        mutable labelList* holesPtr_;
+        //- Fringe hole cells
+        mutable labelList* fringeHolesPtr_;
 
         //- Acceptor cells
         mutable labelList* acceptorsPtr_;
@@ -79,7 +79,7 @@ class faceCellsFringe
         void calcAddressing() const;
 
         // Clear addressing
-        void clearAddressing();
+        void clearAddressing() const;
 
 
 public:
@@ -107,13 +107,15 @@ public:
     // Member Functions
 
         //- Return list of deactivated (hole) cells
-        virtual const labelList& holes() const;
+        //  Fringe hole cells are collected in addition to geometric hole
+        //  cells, which fall outside of all donor regions
+        virtual const labelList& fringeHoles() const;
 
         //- Return list of acceptor cells
         virtual const labelList& acceptors() const;
 
         //- Update the fringe
-        virtual void update();
+        virtual void update() const;
 };
 
 

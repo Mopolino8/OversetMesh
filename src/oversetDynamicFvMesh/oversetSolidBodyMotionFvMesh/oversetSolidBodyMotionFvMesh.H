@@ -23,25 +23,23 @@ License
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Class
-    Foam::regionSolidBodyMotionFvMesh
+    Foam::oversetSolidBodyMotionFvMesh
 
 Description
-    Solid-body motion of the mesh specified by a run-time selectable
+    Solid-body motion of the overset mesh specified by a run-time selectable
     motion function.
 
 SourceFiles
-    regionSolidBodyMotionFvMesh.C
+    oversetSolidBodyMotionFvMesh.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef regionSolidBodyMotionFvMesh_H
-#define regionSolidBodyMotionFvMesh_H
+#ifndef oversetSolidBodyMotionFvMesh_H
+#define oversetSolidBodyMotionFvMesh_H
 
 #include "dynamicFvMesh.H"
 #include "dictionary.H"
-#include "pointIOField.H"
-#include "regionSplit.H"
-#include "solidBodyMotionFunction.H"
+#include "movingOversetRegion.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,10 +47,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                  Class regionSolidBodyMotionFvMesh Declaration
+                  Class oversetSolidBodyMotionFvMesh Declaration
 \*---------------------------------------------------------------------------*/
 
-class regionSolidBodyMotionFvMesh
+class oversetSolidBodyMotionFvMesh
 :
     public dynamicFvMesh
 {
@@ -61,14 +59,8 @@ class regionSolidBodyMotionFvMesh
         //- Dictionary of motion control parameters
         dictionary dynamicMeshCoeffs_;
 
-        //- Region split
-        regionSplit rs_;
-
-        //- Motion control function
-        PtrList<solidBodyMotionFunction> regionSBMFs_;
-
-        //- Region motion masks
-        mutable FieldField<Field, scalar>* regionMotionMasksPtr_;
+        //- Overset region motion control function
+        PtrList<movingOversetRegion> motionRegions_;
 
         //- Reference points which are transformed
         pointIOField undisplacedPoints_;
@@ -77,37 +69,29 @@ class regionSolidBodyMotionFvMesh
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        regionSolidBodyMotionFvMesh(const regionSolidBodyMotionFvMesh&);
+        oversetSolidBodyMotionFvMesh(const oversetSolidBodyMotionFvMesh&);
 
         //- Disallow default bitwise assignment
-        void operator=(const regionSolidBodyMotionFvMesh&);
-
-
-        //- Calculate motion masks
-        void calcMotionMasks() const;
+        void operator=(const oversetSolidBodyMotionFvMesh&);
 
 
 public:
 
     //- Runtime type information
-    TypeName("regionSolidBodyMotionFvMesh");
+    TypeName("oversetSolidBodyMotionFvMesh");
 
 
     // Constructors
 
         //- Construct from IOobject
-        explicit regionSolidBodyMotionFvMesh(const IOobject& io);
+        explicit oversetSolidBodyMotionFvMesh(const IOobject& io);
 
 
     // Destructor
-
-        virtual ~regionSolidBodyMotionFvMesh();
+    virtual ~oversetSolidBodyMotionFvMesh();
 
 
     // Member Functions
-
-        //- Return motion masks for regions
-        const scalarField& motionMask(const label regionI) const;
 
         //- Update the mesh for both mesh motion and topology change
         virtual bool update();

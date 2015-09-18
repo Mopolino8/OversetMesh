@@ -4,40 +4,42 @@
     const oversetMesh& om = oversetMesh::New(mesh);
 
     const volScalarField& cellOversetMask = om.gamma();
-    cellOversetMask.write();
 
     const volScalarField& cellOversetMaskExt = om.gammaExt();
-    cellOversetMaskExt.write();
 
     const surfaceScalarField& faceOversetMask = om.sGamma();
-    faceOversetMask.write();
 
-    // Write regions and overset types
-    om.oversetTypes().write();
-
-    // Create region ID field
-    volScalarField regionIndex
-    (
-        IOobject
-        (
-            "regionIndex",
-            runTime.timeName(),
-            mesh,
-            IOobject::NO_READ,
-            IOobject::NO_WRITE
-        ),
-        mesh,
-        dimless
-    );
-
+    if (runTime.outputTime())
     {
+        om.gamma().write();
+        om.gammaExt().write();
+        om.sGamma().write();
+        om.oversetTypes().write();
+
+        // Create region ID field
+        volScalarField regionIndex
+        (
+            IOobject
+            (
+                "regionIndex",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            dimless
+        );
         scalarField& regionIndexIn = regionIndex.internalField();
 
-        const labelList& regionID = om.regionID();
-
-        forAll (regionIndexIn, cellI)
+        forAll (om.regions(), regionI)
         {
-            regionIndexIn[cellI] = regionID[cellI];
+            const cellZone& cz = om.regions()[regionI].zone();
+
+            forAll (cz, cellI)
+            {
+                regionIndexIn[cz[cellI]] = regionI;
+            }
         }
 
         // Update boundary values
@@ -49,7 +51,6 @@
                     regionIndex.boundaryField()[patchI].patchInternalField();
             }
         }
-    }
 
-    //  Unsure why regionIndex cannot be written.  HJ, 6/Jul/2015
-//     regionIndex.write();
+        regionIndex.write();
+    }
