@@ -123,7 +123,7 @@ void Foam::overlapFringe::calcAddressing() const
 
         // Donor identification: search for donors for all processors
         // using local donor regions
-        
+
         // Go through all donor regions and identify donor cells
         forAll (dr, drI)
         {
@@ -269,7 +269,7 @@ void Foam::overlapFringe::calcAddressing() const
             // Slave processor: send global list to master
             OPstream toMaster
             (
-                Pstream::nonBlocking,
+                Pstream::blocking,
                 Pstream::masterNo()
             );
 
