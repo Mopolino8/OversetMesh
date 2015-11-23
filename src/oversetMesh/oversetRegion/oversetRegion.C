@@ -385,7 +385,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
             // Slave processor: send global list to master
             OPstream toMaster
             (
-                Pstream::nonBlocking,
+                Pstream::blocking,
                 Pstream::masterNo()
             );
 
