@@ -51,7 +51,7 @@ boundaryField
     }
     cylinder
     {
-        type            fixedValue;
+        type            movingWallVelocity;
         value           uniform (0 0 0);
     }
     outerCylinder
