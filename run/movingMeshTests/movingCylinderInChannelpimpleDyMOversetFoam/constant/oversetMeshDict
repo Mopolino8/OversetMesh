@@ -10,60 +10,42 @@ FoamFile
 {
     version         2.0;
     format          ascii;
-    class           volScalarField;
-    object          p;
+    class           dictionary;
+    object          oversetMeshDict;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-
-dimensions [0 2 -2 0 0 0 0];
-
-internalField uniform 0;
-
-boundaryField
+interpolation
 {
-    oversetFaces
-    {
-        type overset;
-        value uniform 0;
-        coupledFringe yes;
-
-        setHoleCellValue  yes;
-        holeCellValue     0;
-    }
-    in
-    {
-        type zeroGradient;
-    }
-    out
-    {
-        type zeroGradient;
-
-//         type fixedValue;
-//         value uniform 0;
-    }
-    top
-    {
-        type zeroGradient;
-    }
-    bottom
-    {
-        type zeroGradient;
-    }
-    cylinder
-    {
-        type zeroGradient;
-    }
-    outerCylinder
-    {
-        type zeroGradient;
-    }
-    frontAndBack
-    {
-        type empty;
-    }
+    type injection;
 }
+
+holePatches  ( cylinder );
+
+regions
+(
+    background
+    {
+        donorRegions ( front );
+
+        fringe
+        {
+            type overlap;
+        }
+    }
+
+    front
+    {
+        donorRegions ( background );
+
+        fringe
+        {
+            type faceCells;
+            patches ( outerCylinder );
+        }
+    }
+);
 
 
 // ************************************************************************* //

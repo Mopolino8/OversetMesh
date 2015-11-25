@@ -10,60 +10,15 @@ FoamFile
 {
     version         2.0;
     format          ascii;
-    class           volScalarField;
-    object          p;
+    class           dictionary;
+    object          transportProperties;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+transportModel  Newtonian;
 
-dimensions [0 2 -2 0 0 0 0];
-
-internalField uniform 0;
-
-boundaryField
-{
-    oversetFaces
-    {
-        type overset;
-        value uniform 0;
-        coupledFringe yes;
-
-        setHoleCellValue  yes;
-        holeCellValue     0;
-    }
-    in
-    {
-        type zeroGradient;
-    }
-    out
-    {
-        type zeroGradient;
-
-//         type fixedValue;
-//         value uniform 0;
-    }
-    top
-    {
-        type zeroGradient;
-    }
-    bottom
-    {
-        type zeroGradient;
-    }
-    cylinder
-    {
-        type zeroGradient;
-    }
-    outerCylinder
-    {
-        type zeroGradient;
-    }
-    frontAndBack
-    {
-        type empty;
-    }
-}
+nu              nu [0 2 -1 0 0 0 0] 0.001;
 
 
 // ************************************************************************* //

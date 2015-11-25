@@ -38,10 +38,10 @@ boundaryField
     }
     out
     {
-//         type zeroGradient;
+        type zeroGradient;
 
-        type fixedValue;
-        value uniform 0;
+//         type fixedValue;
+//         value uniform 0;
     }
     top
     {

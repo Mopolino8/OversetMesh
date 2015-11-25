@@ -18,32 +18,19 @@ solvers
 {
     p
     {
-//         solver           smoothSolver;
-//         smoother         GaussSeidel;
-//         nSweeps          1;
-
         solver           BiCGStab;
         preconditioner   DILU;
 
-//         solver           CG;
-//         preconditioner   DIC;
-
-//         minIter          1;
         maxIter          1000;
-        tolerance        1e-10;
+        tolerance        1e-7;
         relTol           0;
     }
 
     U
     {
-        solver           smoothSolver;
-        smoother         GaussSeidel;
-        nSweeps          1;
+        solver           BiCGStab;
+        preconditioner   DILU;
 
-//         solver           BiCGStab;
-//         preconditioner   DILU;
-
-//         minIter          1;
         maxIter          1000;
         tolerance        1e-7;
         relTol           0;
@@ -53,14 +40,14 @@ solvers
 
 SIMPLE
 {
-    pRefCell 0;
+    pRefPoint (1.9 0.49 0);
     pRefValue 0;
 }
 
 
 PISO
 {
-    pRefCell 0;
+    pRefPoint (1.9 0.49 0);
     pRefValue 0;
 
     nCorrectors 4;

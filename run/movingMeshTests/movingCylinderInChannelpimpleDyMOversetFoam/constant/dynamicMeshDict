@@ -10,44 +10,36 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      fvSchemes;
+    object      dynamicMeshDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
+// dynamicFvMesh   staticFvMesh;
+dynamicFvMesh   oversetSolidBodyMotionFvMesh;
+
+oversetSolidBodyMotionFvMeshCoeffs
 {
-    default Euler;
+    motionFunctions
+    (
+        front
+        {
+            movingZones ( front );
+
+//             solidBodyMotionFunction     translation;
+//             translationCoeffs
+//             {
+//                 velocity (0.1 0 0);
+//             }
+
+            solidBodyMotionFunction     linearOscillation;
+            linearOscillationCoeffs
+            {
+                amplitude    (0.5 0 0);
+                period       2.5;
+            }
+        }
+    );
 }
 
-gradSchemes
-{
-    default         Gauss linear;
-}
-
-divSchemes
-{
-    default         none;
-    div(phi,U)      Gauss upwind;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-
-fluxRequired
-{
-    p;
-}
 
 // ************************************************************************* //

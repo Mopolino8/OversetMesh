@@ -28,6 +28,8 @@ divSchemes
 {
     default         none;
     div(phi,U)      Gauss upwind;
+
+    div((nuEff*dev(grad(U).T()))) Gauss linear;
 }
 
 laplacianSchemes
