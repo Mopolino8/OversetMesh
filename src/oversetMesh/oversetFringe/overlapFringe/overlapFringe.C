@@ -143,6 +143,9 @@ void Foam::overlapFringe::calcAddressing() const
 
             const labelList& curDonors = curDonorRegion.eligibleDonors();
 
+            // Get donor bounding box
+            const boundBox& localBounds = curDonorRegion.localBounds();
+
             // Get donor tree
             const indexedOctree<treeDataCell>& tree =
                 curDonorRegion.cellSearch();
@@ -169,6 +172,15 @@ void Foam::overlapFringe::calcAddressing() const
                     if (!curDA[daI].donorFound())
                     {
                         const vector& curP = curDA[daI].acceptorPoint();
+
+                        // Quick reject: is the acceptor candidate within the
+                        // donor bounding box
+                        if (!localBounds.contains(curP))
+                        {
+                            // Outside global bounds of donor region
+                            // Cannot find donor
+                            continue;
+                        }
 
                         // Find nearest cell with octree
                         // Note: octree only contains eligible cells
@@ -303,6 +315,9 @@ void Foam::overlapFringe::calcAddressing() const
 
             const labelList& curDonors = curDonorRegion.eligibleDonors();
 
+            // Get donor bounding boxes
+            const boundBox& globalBounds = curDonorRegion.globalBounds();
+
             // Get donor tree
             const indexedOctree<treeDataCell>& tree =
                 curDonorRegion.cellSearch();
@@ -323,6 +338,15 @@ void Foam::overlapFringe::calcAddressing() const
                 {
                     const label& curCell = acCand[acI].acceptorCell();
                     const vector& curCentre = cc[curCell];
+
+                    // Quick reject: is the acceptor candidate within the
+                    // donor bounding box
+                    if (!globalBounds.contains(curCentre))
+                    {
+                        // Outside global bounds of donor region
+                        // Cannot find donor here
+                        continue;
+                    }
 
                     // Find nearest cell in the current master region
                     pointIndexHit pih = tree.findNearest(curCentre, span);

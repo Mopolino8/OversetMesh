@@ -598,7 +598,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                 (
                     "void oversetRegion::calcDonorAcceptorCells() const"
                 )   << "Inconsistency in donor cell data assembly for region "
-                    << name() << ".  Found " << uncoveredAcceptors.size() 
+                    << name() << ".  Found " << uncoveredAcceptors.size()
                     << " uncovered acceptors" << nl
                     << "Writing " << uncoveredSetName
                     << abort(FatalError);
@@ -999,6 +999,71 @@ void Foam::oversetRegion::calcHoleTriMesh() const
 }
 
 
+void Foam::oversetRegion::calcBounds() const
+{
+    if (localBoundsPtr_ || globalBoundsPtr_)
+    {
+        FatalErrorIn("void oversetRegion::calcBounds() const")
+            << "Bounds already calculated"
+            << abort(FatalError);
+    }
+
+    // Make a global bounding box for this region
+    boolList usedPoints(mesh_.nPoints(), false);
+
+    // Get cells-points from mesh
+    const labelListList& pc = mesh_.cellPoints();
+
+    // Get region cell indices
+    const labelList& rc = zone();
+
+    forAll (rc, rcI)
+    {
+        // Get points of region cells
+        const labelList& curPc = pc[rc[rcI]];
+
+        forAll (curPc, i)
+        {
+            usedPoints[curPc[i]] = true;
+        }
+    }
+
+    // Count used points
+    label nUsedPoints = 0;
+
+    forAll (usedPoints, pointI)
+    {
+        if (usedPoints[pointI])
+        {
+            nUsedPoints++;
+        }
+    }
+
+    // Make a list of used points
+    const pointField& points = mesh_.points();
+
+    pointField regionPoints(nUsedPoints);
+
+    // Reset point counter to zero
+    nUsedPoints = 0;
+
+    forAll (usedPoints, pointI)
+    {
+        if (usedPoints[pointI])
+        {
+            regionPoints[nUsedPoints] = points[pointI];
+            nUsedPoints++;
+        }
+    }
+
+    // Local (processor) bounding box is calculated without a reduce
+    localBoundsPtr_ = new boundBox(regionPoints, false);
+
+    // Global bounding box is calculated with a reduce
+    globalBoundsPtr_ = new boundBox(regionPoints, true);
+}
+
+
 void Foam::oversetRegion::calcCellSearch() const
 {
     if (cellSearchPtr_)
@@ -1012,7 +1077,9 @@ void Foam::oversetRegion::calcCellSearch() const
     // regions when searching for donor cells
 
     // Reconsider search boxes: only capture local cells
-    treeBoundBox overallBb(mesh_.points());
+//     treeBoundBox overallBb(mesh_.points(), false);
+    //HJ Testing
+    treeBoundBox overallBb(localBounds());
     Random rndGen(123456);
     overallBb = overallBb.extend(rndGen, 1E-4);
     overallBb.min() -= point(ROOTVSMALL, ROOTVSMALL, ROOTVSMALL);
@@ -1048,6 +1115,8 @@ void Foam::oversetRegion::clearOut() const
     deleteDemandDrivenData(holeTriMeshPtr_);
     deleteDemandDrivenData(holeSearchPtr_);
 
+    deleteDemandDrivenData(localBoundsPtr_);
+    deleteDemandDrivenData(globalBoundsPtr_);
     deleteDemandDrivenData(cellSearchPtr_);
 }
 
@@ -1081,6 +1150,8 @@ Foam::oversetRegion::oversetRegion
     holeTriMeshPtr_(NULL),
     holeSearchPtr_(NULL),
 
+    localBoundsPtr_(NULL),
+    globalBoundsPtr_(NULL),
     cellSearchPtr_(NULL)
 {
     // Check zone index
@@ -1106,6 +1177,8 @@ Foam::oversetRegion::oversetRegion
         *this,
         dict.subDict("fringe")
     );
+
+    calcBounds();
 }
 
 
@@ -1219,6 +1292,28 @@ const Foam::triSurfaceSearch& Foam::oversetRegion::holeSearch() const
     }
 
     return *holeSearchPtr_;
+}
+
+
+const Foam::boundBox& Foam::oversetRegion::localBounds() const
+{
+    if (!localBoundsPtr_)
+    {
+        calcBounds();
+    }
+
+    return *localBoundsPtr_;
+}
+
+
+const Foam::boundBox& Foam::oversetRegion::globalBounds() const
+{
+    if (!globalBoundsPtr_)
+    {
+        calcBounds();
+    }
+
+    return *globalBoundsPtr_;
 }
 
 

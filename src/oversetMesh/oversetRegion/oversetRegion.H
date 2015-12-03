@@ -49,6 +49,7 @@ SourceFiles
 
 #include "fvMesh.H"
 #include "donorAcceptorList.H"
+#include "boundBox.H"
 #include "triSurfaceMesh.H"
 #include "triSurfaceTools.H"
 #include "triSurfaceSearch.H"
@@ -132,6 +133,12 @@ class oversetRegion
 
         // Donor search tools
 
+            //- Overset region local (processor) bounding box
+            mutable boundBox* localBoundsPtr_;
+
+            //- Overset region global (region) bounding box
+            mutable boundBox* globalBoundsPtr_;
+
             //- Cell octree for search in local region
             //  Used in donor cell search
             mutable indexedOctree<treeDataCell>* cellSearchPtr_;
@@ -168,6 +175,9 @@ class oversetRegion
 
         // Calculate eligible donor cells
         void calcEligibleDonorCells() const;
+
+        // Calculate bounds
+        void calcBounds() const;
 
         // Calculate cell octree
         void calcCellSearch() const;
@@ -273,6 +283,12 @@ public:
 
 
         // Donor cell search functionality
+
+            //- Return local (processor) bounding box for region
+            const boundBox& localBounds() const;
+
+            //- Return global (region) bounding box for region
+            const boundBox& globalBounds() const;
 
             //- Return cell octree for search in local region
             //  Only eligible donors are added to the list
