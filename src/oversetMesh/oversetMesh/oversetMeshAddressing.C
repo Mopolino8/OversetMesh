@@ -655,28 +655,30 @@ void Foam::oversetMesh::calcHoleFaces() const
         }
     }
 
-    const volScalarField::GeometricBoundaryField& gammaPatches =
-        gamma().boundaryField();
+    // Bug fix: need to use gammaExt instead of gamma to mark hole faces
+    const volScalarField::GeometricBoundaryField& gammaExtPatches =
+        gammaExt().boundaryField();
 
-    forAll (gammaPatches, patchI)
+    forAll (gammaExtPatches, patchI)
     {
         // Note: take faceCells from fvPatch (because of empty)
         const labelList& fc = mesh().boundary()[patchI].faceCells();
         const label start = mesh().boundaryMesh()[patchI].start();
 
-        if (gammaPatches[patchI].coupled())
+        if (gammaExtPatches[patchI].coupled())
         {
-            scalarField gammaOwn =
-                gammaPatches[patchI].patchInternalField();
+            scalarField gammaExtOwn =
+                gammaExtPatches[patchI].patchInternalField();
 
-            scalarField gammaNei =
-                gammaPatches[patchI].patchNeighbourField();
+            scalarField gammaExtNei =
+                gammaExtPatches[patchI].patchNeighbourField();
 
-            forAll (gammaOwn, patchFaceI)
+            forAll (gammaExtOwn, patchFaceI)
             {
                 if
                 (
-                    mag(gammaNei[patchFaceI] - gammaOwn[patchFaceI]) > SMALL
+                    mag(gammaExtNei[patchFaceI] - gammaExtOwn[patchFaceI])
+                  > SMALL
                 )
                 {
                     if (hole[fc[patchFaceI]] > -1)
@@ -727,9 +729,6 @@ void Foam::oversetMesh::calcHoleFaces() const
             hIF.append(faceI);
         }
     }
-
-    const volScalarField::GeometricBoundaryField& gammaExtPatches =
-        gammaExt().boundaryField();
 
     forAll (gammaExtPatches, patchI)
     {
@@ -936,7 +935,7 @@ void Foam::oversetMesh::calcParallelAddressing() const
 
         remAcceptorAddr.setSize(nRemoteAcceptors);
         procRemoteAcceptors.setSize(nRemoteAcceptors);
-        
+
         // Reset the size of lists
         remDonors.setSize(nRemoteDonors);
         procRemoteDonors.setSize(nRemoteDonors);
