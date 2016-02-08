@@ -177,7 +177,7 @@ void Foam::oversetMesh::calcDomainMarkup() const
     }
 
     // Region ID
-    regionIDPtr_ = new labelList(mesh().nCells());
+    regionIDPtr_ = new labelList(mesh().nCells(), -1);
     labelList& rID = *regionIDPtr_;
 
     // Mark regions
@@ -210,6 +210,12 @@ void Foam::oversetMesh::calcGamma() const
             << "Markup fields already calculated"
             << abort(FatalError);
     }
+
+    // Trigger the calculation of cell centres to avoid tangled parallel
+    // communications in case the lazy evaluation mechanism is invoked in
+    // GeometricField::evaluate() member function. Temporary solution.
+    // To-do: examine stack trace for fvMesh::makeC(), VV, 8/Feb/2015.
+    mesh().C();
 
     // Fluid cells indicator, marking only live cells
     gammaPtr_ = new volScalarField
@@ -362,9 +368,11 @@ void Foam::oversetMesh::calcGamma() const
             scalarField& gP = sgPatches[patchI];
 
             // For coupled patches, check gammaExt
-            scalarField gammaOwn = gExtPatches[patchI].patchInternalField();
+            const scalarField gammaOwn =
+                gExtPatches[patchI].patchInternalField();
 
-            scalarField gammaNei = gExtPatches[patchI].patchNeighbourField();
+            const scalarField gammaNei =
+                gExtPatches[patchI].patchNeighbourField();
 
             forAll (gammaOwn, faceI)
             {
@@ -378,10 +386,10 @@ void Foam::oversetMesh::calcGamma() const
                 }
             }
 
-            scalarField gammaAccOwn =
+            const scalarField gammaAccOwn =
                 gAccPatches[patchI].patchInternalField();
 
-            scalarField gammaAccNei =
+            const scalarField gammaAccNei =
                 gAccPatches[patchI].patchNeighbourField();
 
             forAll (gammaOwn, faceI)
@@ -401,7 +409,7 @@ void Foam::oversetMesh::calcGamma() const
             // For regular patches, check live cells only to achieve
             // correct global mass adjustment.
             // HJ, 21/May/2012
-            scalarField gammaFc =
+            const scalarField gammaFc =
                 g.boundaryField()[patchI].patchInternalField();
 
             scalarField& gP = sgPatches[patchI];
@@ -500,14 +508,17 @@ void Foam::oversetMesh::calcFringeFaces() const
 
         if (gammaPatches[patchI].coupled())
         {
-            scalarField gammaOwn =
+            const scalarField gammaOwn =
                 gammaPatches[patchI].patchInternalField();
 
-            scalarField gammaNei =
+            const scalarField gammaNei =
                 gammaPatches[patchI].patchNeighbourField();
 
             forAll (gammaOwn, patchFaceI)
             {
+                // Note: we assume that there are no live cells neighbouring
+                // hole cells, only acceptors. This is forced in overset fringe
+                // algorithms (overlapFringe specifically).
                 if
                 (
                     mag(gammaNei[patchFaceI] - gammaOwn[patchFaceI]) > SMALL
@@ -518,14 +529,14 @@ void Foam::oversetMesh::calcFringeFaces() const
                         // Owner cell is AC
                         acF.append(start + patchFaceI);
                         acFC.append(acCellIndicator[fc[patchFaceI]]);
-                        acFF.append(false);
+                        acFF.append(true);
                     }
                     else
                     {
                         // Neighbour cell is AC
                         acF.append(start + patchFaceI);
                         acFC.append(-1);
-                        acFF.append(true);
+                        acFF.append(false);
                     }
                 }
             }
@@ -560,6 +571,9 @@ void Foam::oversetMesh::calcFringeFaces() const
         }
     }
 
+    const volScalarField::GeometricBoundaryField& gammaExtPatches =
+        gammaExt().boundaryField();
+
     forAll (gammaPatches, patchI)
     {
         // Note: take faceCells from fvPatch (because of empty)
@@ -567,18 +581,21 @@ void Foam::oversetMesh::calcFringeFaces() const
 
         if (gammaPatches[patchI].coupled())
         {
-            scalarField gammaOwn =
-                gammaPatches[patchI].patchInternalField();
+            // Create acceptor mask
+            const scalarField gammaAccOwn =
+                gammaExtPatches[patchI].patchInternalField()
+              - gammaPatches[patchI].patchInternalField();
 
-            scalarField gammaNei =
-                gammaPatches[patchI].patchNeighbourField();
+            const scalarField gammaAccNei =
+                gammaExtPatches[patchI].patchNeighbourField()
+              - gammaPatches[patchI].patchNeighbourField();
 
-            forAll (gammaOwn, patchFaceI)
+            forAll (gammaAccOwn, patchFaceI)
             {
                 if
                 (
-                    mag(gammaNei[patchFaceI]) < SMALL
-                 && mag(gammaOwn[patchFaceI]) < SMALL
+                    mag(gammaAccNei[patchFaceI]) > SMALL
+                 && mag(gammaAccOwn[patchFaceI]) > SMALL
                 )
                 {
                     acInternalF.append(start + patchFaceI);
@@ -635,7 +652,7 @@ void Foam::oversetMesh::calcHoleFaces() const
          && hole[neighbour[faceI]] > -1
         )
         {
-            // Owner is live, neighbour H.  Its H index is in
+            // Owner is live (acceptor), neighbour H.  Its H index is in
             // hole
             hF.append(faceI);
             hFC.append(hole[neighbour[faceI]]);
@@ -647,7 +664,7 @@ void Foam::oversetMesh::calcHoleFaces() const
          && hole[neighbour[faceI]] == -1
         )
         {
-            // Neighbour is live, owner H.  Its H index is in
+            // Neighbour is live (acceptor), owner H.  Its H index is in
             // hole
             hF.append(faceI);
             hFC.append(hole[owner[faceI]]);
@@ -667,14 +684,17 @@ void Foam::oversetMesh::calcHoleFaces() const
 
         if (gammaExtPatches[patchI].coupled())
         {
-            scalarField gammaExtOwn =
+            const scalarField gammaExtOwn =
                 gammaExtPatches[patchI].patchInternalField();
 
-            scalarField gammaExtNei =
+            const scalarField gammaExtNei =
                 gammaExtPatches[patchI].patchNeighbourField();
 
             forAll (gammaExtOwn, patchFaceI)
             {
+                // Note: we assume that there are no live cells neighbouring
+                // hole cells, only acceptors. This is forced in overset fringe
+                // algorithms (overlapFringe specifically).
                 if
                 (
                     mag(gammaExtNei[patchFaceI] - gammaExtOwn[patchFaceI])
@@ -686,14 +706,14 @@ void Foam::oversetMesh::calcHoleFaces() const
                         // Owner cell is H
                         hF.append(start + patchFaceI);
                         hFC.append(hole[fc[patchFaceI]]);
-                        hFF.append(false);
+                        hFF.append(true);
                     }
                     else
                     {
                         // Neighbour cell is H
                         hF.append(start + patchFaceI);
                         hFC.append(-1);
-                        hFF.append(true);
+                        hFF.append(false);
                     }
                 }
             }
@@ -737,10 +757,10 @@ void Foam::oversetMesh::calcHoleFaces() const
 
         if (gammaExtPatches[patchI].coupled())
         {
-            scalarField gammaExtOwn =
+            const scalarField gammaExtOwn =
                 gammaExtPatches[patchI].patchInternalField();
 
-            scalarField gammaExtNei =
+            const scalarField gammaExtNei =
                 gammaExtPatches[patchI].patchNeighbourField();
 
             forAll (gammaExtOwn, patchFaceI)
@@ -768,8 +788,10 @@ void Foam::oversetMesh::calcParallelAddressing() const
     if
     (
         localDonorsPtr_
+     || localNeighbouringDonorsPtr_
      || localDonorAddrPtr_
      || remoteDonorsPtr_
+     || remoteNeighbouringDonorsPtr_
      || remoteAcceptorAddrPtr_
      || globalAcceptFromProcPtr_
      || globalAcceptFromCellPtr_
@@ -780,7 +802,20 @@ void Foam::oversetMesh::calcParallelAddressing() const
             << abort(FatalError);
     }
 
-    // Mark the acceptors with acceptor cell index
+    // Create donor mask excluding acceptor and hole cells from the extended
+    // (neighbourhood) donor selection
+    boolList donorMask(mesh().nCells(), true);
+
+    // Mask hole cells
+    const labelList& hc = holeCells();
+
+    forAll (hc, hcI)
+    {
+        donorMask[hc[hcI]] = false;
+    }
+
+    // Mark the acceptors with acceptor cell index and exclude them from the
+    // extended donor selection
     const labelList& ac = acceptorCells();
 
     labelList acIndex(mesh().nCells(), -1);
@@ -788,6 +823,9 @@ void Foam::oversetMesh::calcParallelAddressing() const
     forAll (ac, acI)
     {
         acIndex[ac[acI]] = acI;
+
+        // Acceptor cells cannot be extended (neighbouring) donors
+        donorMask[ac[acI]] = false;
     }
 
     // Mark the donors with donor cell index
@@ -803,6 +841,13 @@ void Foam::oversetMesh::calcParallelAddressing() const
     // Create local donor to local acceptor addressing
     localDonorsPtr_ = new labelList(ac.size(), -1);
     labelList& locDonors = *localDonorsPtr_;
+
+    // Create local neighbouring donors
+    localNeighbouringDonorsPtr_ = new labelListList(ac.size());
+    labelListList& locNeiDonors = *localNeighbouringDonorsPtr_;
+
+    // Get cell-cell addressing for neighbouring donor search
+    const labelListList& cc = mesh().cellCells();
 
     // Create local donor to local acceptor addressing
     localDonorAddrPtr_ = new labelList(ac.size(), -1);
@@ -832,6 +877,10 @@ void Foam::oversetMesh::calcParallelAddressing() const
         // Create remote donor addressing
         remoteDonorsPtr_ = new labelList(dc.size(), -1);
         labelList& remDonors = *remoteDonorsPtr_;
+
+        // Create remote neighbouring donors addressing
+        remoteNeighbouringDonorsPtr_ = new labelListList(dc.size());
+        labelListList& remNeiDonors = *remoteNeighbouringDonorsPtr_;
 
         // Prepare remote donor list for master processor to
         // calculate addressing.  This list contains local
@@ -881,13 +930,46 @@ void Foam::oversetMesh::calcParallelAddressing() const
             const donorAcceptorList& curAcceptors =
                 regions_[regionI].acceptors();
 
+            // Create working hash set of extended neighbouring donors
+            labelHashSet extDonors
+            (
+                polyMesh::facesPerCell_*
+                Foam::pow(interpolationPtr_->extensionLevel() + 1, 3)
+            );
+
             forAll (curAcceptors, aI)
             {
                 if (curAcceptors[aI].donorProcNo() == Pstream::myProcNo())
                 {
+                    // Get donor cell index
+                    const label& donorCellI = curAcceptors[aI].donorCell();
+
                     // Local donor and acceptor
-                    locDonors[nLocalAddr] = curAcceptors[aI].donorCell();
+                    locDonors[nLocalAddr] = donorCellI;
                     locDonorAddr[nLocalAddr] = acceptorI;
+
+                    // Get neighbouring cells of this cells
+                    const labelList& curNbrs = cc[donorCellI];
+
+                    // Mark neighbouring donors based on extension level
+                    markNeighbouringDonors
+                    (
+                        curNbrs,
+                        cc,
+                        donorMask,
+                        extDonors,
+                        interpolationPtr_->extensionLevel()
+                    );
+
+                    // Transfer the list from hash set into
+                    // localNeighbouringDonors list for this master donor
+                    // (acceptor)
+                    locNeiDonors[nLocalAddr] = extDonors.toc();
+
+                    // Clear the hash set, keeping the allocated memory
+                    extDonors.clear();
+
+                    // Increment the counter
                     nLocalAddr++;
                 }
                 else
@@ -918,12 +1000,37 @@ void Foam::oversetMesh::calcParallelAddressing() const
                 }
                 else
                 {
+                    // Get donor cell index
+                    const label& donorCellI = curDonors[dI].donorCell();
+
                     // Record local donor for a remote acceptor:
                     // Data will be sent to the master
-                    remDonors[nRemoteDonors] = curDonors[dI].donorCell();
+                    remDonors[nRemoteDonors] = donorCellI;
 
                     procRemoteDonors[nRemoteDonors] = curDonors[dI];
 
+                    // Get neighbouring cells of this cells
+                    const labelList& curNbrs = cc[donorCellI];
+
+                    // Mark neighbouring donors based on extension level
+                    markNeighbouringDonors
+                    (
+                        curNbrs,
+                        cc,
+                        donorMask,
+                        extDonors,
+                        interpolationPtr_->extensionLevel()
+                    );
+
+                    // Transfer the list from hash set into
+                    // localNeighbouringDonors list for this master donor
+                    // (acceptor)
+                    remNeiDonors[nRemoteDonors] = extDonors.toc();
+
+                    // Clear the hash set, keeping the allocated memory
+                    extDonors.clear();
+
+                    // Increment the counter
                     nRemoteDonors++;
                 }
             }
@@ -931,6 +1038,7 @@ void Foam::oversetMesh::calcParallelAddressing() const
 
         // Reset the size of lists
         locDonors.setSize(nLocalAddr);
+        locNeiDonors.setSize(nLocalAddr);
         locDonorAddr.setSize(nLocalAddr);
 
         remAcceptorAddr.setSize(nRemoteAcceptors);
@@ -938,9 +1046,10 @@ void Foam::oversetMesh::calcParallelAddressing() const
 
         // Reset the size of lists
         remDonors.setSize(nRemoteDonors);
+        remNeiDonors.setSize(nRemoteDonors);
         procRemoteDonors.setSize(nRemoteDonors);
 
-        // Gather remote donor and  acceptor data before commes indentification
+        // Gather remote donor and acceptor data before identification
         Pstream::gatherList(globalRemoteDonors);
         Pstream::gatherList(globalRemoteAcceptors);
 
@@ -1064,11 +1173,44 @@ void Foam::oversetMesh::calcParallelAddressing() const
             const donorAcceptorList& curAcceptors =
                 regions_[regionI].acceptors();
 
+            // Create working hash set of extended neighbouring donors
+            labelHashSet extDonors
+            (
+                polyMesh::facesPerCell_*
+                Foam::pow(interpolationPtr_->extensionLevel() + 1, 3)
+            );
+
             forAll (curAcceptors, aI)
             {
+                // Get donor cell index
+                const label& donorCellI = curAcceptors[aI].donorCell();
+
                 // Grab local donor from the list
-                locDonors[nLocalAddr] = curAcceptors[aI].donorCell();
+                locDonors[nLocalAddr] = donorCellI;
                 locDonorAddr[nLocalAddr] = nLocalAddr;
+
+                // Get neighbouring cells of this cells
+                const labelList& curNbrs = cc[donorCellI];
+
+                // Mark neighbouring donors based on extension level
+                markNeighbouringDonors
+                (
+                    curNbrs,
+                    cc,
+                    donorMask,
+                    extDonors,
+                    interpolationPtr_->extensionLevel()
+                );
+
+                // Transfer the list from hash set into
+                // localNeighbouringDonors list for this master donor
+                // (acceptor)
+                locNeiDonors[nLocalAddr] = extDonors.toc();
+
+                // Clear the hash set, keeping the allocated memory
+                extDonors.clear();
+
+                // Increment the counter
                 nLocalAddr++;
             }
         }
@@ -1112,13 +1254,53 @@ void Foam::oversetMesh::clearOut() const
     deleteDemandDrivenData(acceptorInternalFacesPtr_);
 
     deleteDemandDrivenData(localDonorsPtr_);
+    deleteDemandDrivenData(localNeighbouringDonorsPtr_);
     deleteDemandDrivenData(localDonorAddrPtr_);
     deleteDemandDrivenData(remoteDonorsPtr_);
+    deleteDemandDrivenData(remoteNeighbouringDonorsPtr_);
     deleteDemandDrivenData(remoteAcceptorAddrPtr_);
     deleteDemandDrivenData(globalAcceptFromProcPtr_);
     deleteDemandDrivenData(globalAcceptFromCellPtr_);
+}
 
-    deleteDemandDrivenData(interpolationPtr_);
+
+void Foam::oversetMesh::markNeighbouringDonors
+(
+    const labelList& nbrCells,
+    const labelListList& cellCells,
+    const boolList& donorMask,
+    labelHashSet& extendedNeighbouringDonors,
+    label curLevel
+) const
+{
+    if (curLevel > -1)
+    {
+        // For each neighbouring cell, loop through its neighbours
+        forAll (nbrCells, i)
+        {
+            // Get neighbouring cell index
+            const label& nbrCellI = nbrCells[i];
+
+            // Check if the cell is eligible donor (not an acceptor or hole)
+            if (donorMask[nbrCellI])
+            {
+                // Insert this neighbouring cell in the extended neighbouring
+                // donor hash set
+                extendedNeighbouringDonors.insert(nbrCellI);
+            }
+
+            // Recursive call with decremented level and neighbours of this
+            // neighbouring cells
+            markNeighbouringDonors
+            (
+                cellCells[nbrCellI],
+                cellCells,
+                donorMask,
+                extendedNeighbouringDonors,
+                curLevel - 1
+            );
+        }
+    }
 }
 
 
@@ -1311,6 +1493,17 @@ const Foam::labelList& Foam::oversetMesh::localDonors() const
 }
 
 
+const Foam::labelListList& Foam::oversetMesh::localNeighbouringDonors() const
+{
+    if (!localNeighbouringDonorsPtr_)
+    {
+        calcParallelAddressing();
+    }
+
+    return *localNeighbouringDonorsPtr_;
+}
+
+
 const Foam::labelList& Foam::oversetMesh::localDonorAddr() const
 {
     if (!localDonorAddrPtr_)
@@ -1333,6 +1526,17 @@ const Foam::labelList& Foam::oversetMesh::remoteDonors() const
 }
 
 
+const Foam::labelListList& Foam::oversetMesh::remoteNeighbouringDonors() const
+{
+    if (!remoteNeighbouringDonorsPtr_)
+    {
+        calcParallelAddressing();
+    }
+
+    return *remoteNeighbouringDonorsPtr_;
+}
+
+
 const Foam::labelList& Foam::oversetMesh::remoteAcceptorAddr() const
 {
     if (!remoteAcceptorAddrPtr_)
@@ -1346,76 +1550,78 @@ const Foam::labelList& Foam::oversetMesh::remoteAcceptorAddr() const
 
 const Foam::labelListList& Foam::oversetMesh::globalAcceptFromProc() const
 {
-    if (Pstream::parRun())
-    {
-        if (Pstream::master())
-        {
-            if (!globalAcceptFromProcPtr_)
-            {
-                calcParallelAddressing();
-            }
-
-            return *globalAcceptFromProcPtr_;
-        }
-        else
-        {
-            FatalErrorIn
-            (
-                "const labelListList& oversetMesh::"
-                "globalAcceptFromProc() const"
-            )   << "Requested global addressing from slave processor.  "
-                << "This data is only calculated and used on master"
-                << abort(FatalError);
-        }
-    }
-    else
+    // We cannot calculate the global data using usual lazy evaluation
+    // mechanism since the data only exists on the master processor. Add
+    // additional guards, VV, 8/Feb/2016.
+    if (!Pstream::parRun())
     {
         FatalErrorIn
         (
             "const labelListList& oversetMesh::globalAcceptFromProc() const"
-        )   << "Requested global addressing for a serial run"
+        )   << "Attempted to calculate global overset data for a serial run."
+            << "This is not allowed."
+            << abort(FatalError);
+    }
+    else if (!Pstream::master())
+    {
+        FatalErrorIn
+        (
+            "const labelListList& oversetMesh::globalAcceptFromProc() const"
+        )   << "Attempted to calculate global overset data for a slave "
+            << "processor. This is not allowed."
+            << abort(FatalError);
+    }
+    else if (!globalAcceptFromProcPtr_)
+    {
+        FatalErrorIn
+        (
+            "const labelListList& oversetMesh::globalAcceptFromProc() const"
+        )   << "Calculation of global overset data not possible because the\n "
+            << "data exists only on the master processor. Please calculate\n"
+            << "overset addressing by calling .localDonors() member function\n"
+            << "before calling this function."
             << abort(FatalError);
     }
 
-    // Dummy return to keep compiler happy
     return *globalAcceptFromProcPtr_;
 }
 
 
 const Foam::labelListList& Foam::oversetMesh::globalAcceptFromCell() const
 {
-    if (Pstream::parRun())
-    {
-        if (Pstream::master())
-        {
-            if (!globalAcceptFromCellPtr_)
-            {
-                calcParallelAddressing();
-            }
-
-            return *globalAcceptFromCellPtr_;
-        }
-        else
-        {
-            FatalErrorIn
-            (
-                "const labelListList& oversetMesh::"
-                "globalAcceptFromCell() const"
-            )   << "Requested global addressing from slave processor.  "
-                << "This data is only calculated and used on master"
-                << abort(FatalError);
-        }
-    }
-    else
+    // We cannot calculate the global data using usual lazy evaluation
+    // mechanism since the data only exists on the master processor. Add
+    // additional guards, VV, 8/Feb/2016.
+    if (!Pstream::parRun())
     {
         FatalErrorIn
         (
             "const labelListList& oversetMesh::globalAcceptFromCell() const"
-        )   << "Requested global addressing for a serial run"
+        )   << "Attempted to calculate global overset data for a serial run."
+            << "This is not allowed."
+            << abort(FatalError);
+    }
+    else if (!Pstream::master())
+    {
+        FatalErrorIn
+        (
+            "const labelListList& oversetMesh::globalAcceptFromCell() const"
+        )   << "Attempted to calculate global overset data for a slave "
+            << "processor. This is not allowed."
+            << abort(FatalError);
+    }
+    else if (!globalAcceptFromCellPtr_)
+    {
+        FatalErrorIn
+        (
+            "const labelListList& oversetMesh::globalAcceptFromCell() const"
+        )   << "Calculation of global overset data not possible because the\n "
+            << "data exists only on the master processor. Please calculate\n"
+            << "overset addressing by calling .localDonors() member function\n"
+            << "before calling this function."
             << abort(FatalError);
     }
 
-    // Dummy return to keep compiler happy
     return *globalAcceptFromCellPtr_;
 }
 

@@ -28,12 +28,13 @@ License
 #include "surfaceFields.H"
 #include "volFields.H"
 #include "demandDrivenData.H"
+#include "oversetPolyPatch.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(oversetMesh, 2);
+    defineTypeNameAndDebug(oversetMesh, 0);
 }
 
 
@@ -77,19 +78,28 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
     acceptorInternalFacesPtr_(NULL),
 
     localDonorsPtr_(NULL),
+    localNeighbouringDonorsPtr_(NULL),
     localDonorAddrPtr_(NULL),
     remoteDonorsPtr_(NULL),
+    remoteNeighbouringDonorsPtr_(NULL),
     remoteAcceptorAddrPtr_(NULL),
     globalAcceptFromProcPtr_(NULL),
     globalAcceptFromCellPtr_(NULL),
-    interpolationPtr_(NULL)
+    interpolationPtr_
+    (
+        oversetInterpolation::New
+        (
+            *this,
+            dict_.subDict("interpolation")
+        )
+    )
 {
     Info << "Creating oversetMesh" << endl;
 
     // Read regions
     PtrList<entry> regionEntries(dict_.lookup("regions"));
 
-    regions_.setSize(regionEntries.size()); 
+    regions_.setSize(regionEntries.size());
     forAll (regionEntries, regionI)
     {
         regions_.set
@@ -104,6 +114,18 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
                 regionEntries[regionI].dict()
             )
         );
+    }
+
+    // Overset patch must come first for consistent handling of patch flux on
+    // coupled boundaries (see oversetFvPatchField::patchFlux() member function)
+    if (!isA<oversetPolyPatch>(mesh.boundaryMesh()[0]))
+    {
+        FatalErrorIn("oversetMesh::oversetMesh(const fvMesh& mesh)")
+          << "Overset patch needs to come first for consistent reconstruction"
+          << nl << " of fringe face fluxes on coupled boundaries."
+          << nl << "First patch is: " << mesh.boundaryMesh()[0].name()
+          << nl << "with type: " << mesh.boundaryMesh()[0].type()
+          << abort(FatalError);
     }
 
     // Check for duplicate region names
@@ -123,16 +145,7 @@ Foam::oversetMesh::~oversetMesh()
 
 const Foam::oversetInterpolation& Foam::oversetMesh::interpolation() const
 {
-    if (!interpolationPtr_)
-    {
-        interpolationPtr_ = oversetInterpolation::New
-        (
-            *this,
-            dict_.subDict("interpolation")
-        ).ptr();
-    }
-
-    return *interpolationPtr_;
+    return interpolationPtr_();
 }
 
 
@@ -146,6 +159,9 @@ bool Foam::oversetMesh::movePoints() const
     {
         regions_[regionI].update();
     }
+
+    // Update interpolation (recalculate weights)
+    interpolationPtr_->update();
 
     clearOut();
 
@@ -163,6 +179,9 @@ bool Foam::oversetMesh::updateMesh(const mapPolyMesh&) const
     {
         regions_[regionI].update();
     }
+
+    // Update interpolation (recalculate weights)
+    interpolationPtr_->update();
 
     clearOut();
 
