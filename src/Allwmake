@@ -13,5 +13,6 @@ wmake icoOversetFoam
 wmake simpleOversetFoam
 wmake interOversetFoam
 
+wmake potentialDyMOversetFoam
 wmake icoDyMOversetFoam
 wmake pimpleDyMOversetFoam
