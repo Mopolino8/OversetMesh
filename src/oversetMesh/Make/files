@@ -4,7 +4,6 @@ oversetFringe/oversetFringe/oversetFringe.C
 oversetFringe/oversetFringe/newOversetFringe.C
 oversetFringe/manualFringe/manualFringe.C
 oversetFringe/faceCellsFringe/faceCellsFringe.C
-oversetFringe/faceCellsDoubleFringe/faceCellsDoubleFringe.C
 oversetFringe/overlapFringe/overlapFringe.C
 oversetFringe/compositeFringe/compositeFringe.C
 
