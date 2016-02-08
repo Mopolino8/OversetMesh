@@ -5,7 +5,9 @@
 
 cleanCase
 ( cd background ; cleanCase )
-\rm -f .setSet constant/cellDecomposition constant/cellDecomposition.gz
+\rm -f .setSet
+\rm -rf 0/cellDist 0/cellDist.gz constant/cellDecomposition 
+\rm -rf *.vtk
 \rm -rf constant/polyMesh/
 mkdir constant/polyMesh
 \rm -rf 0 holeTri*

@@ -5,7 +5,9 @@
 
 cleanTimeDirectories
 \rm -rf processor*
-\rm -f .setSet constant/cellDecomposition constant/cellDecomposition.gz
+\rm -f .setSet
+\rm -rf 0/cellDist 0/cellDist.gz constant/cellDecomposition 
+\rm -rf *.vtk
 \rm -rf VTK
 \rm -rf constant/polyMesh/sets
 #\cp -r sets constant/polyMesh/sets

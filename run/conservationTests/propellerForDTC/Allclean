@@ -6,7 +6,8 @@
 cleanCase
 #( cd backgroundMesh ; ./Allclean )
 #( cd propellerMesh ; ./Allclean )
-\rm -f .setSet constant/cellDecomposition constant/cellDecomposition.gz
+\rm -rf .setSet 0/cellDist 0/cellDist.gz constant/cellDecomposition 
+\rm -rf *.vtk
 \rm -rf constant/polyMesh/
 mkdir constant/polyMesh
 \rm -rf 0

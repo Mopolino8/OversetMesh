@@ -5,7 +5,9 @@
 
 cleanTimeDirectories
 \rm -rf processor*
-\rm -f .setSet constant/cellDecomposition constant/cellDecomposition.gz
+\rm -rf .setSet
+\rm -rf 0/cellDist 0/cellDist.gz constant/cellDecomposition 
+\rm -rf *.vtk
 \rm -rf VTK
 \rm -rf 0
 \cp -r save 0
