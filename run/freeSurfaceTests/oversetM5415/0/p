@@ -26,7 +26,7 @@ boundaryField
         type overset;
         value uniform 0;
         coupledFringe yes;
-
+        conservativeCorrection yes;
         setHoleCellValue  yes;
         holeCellValue     0;
     }
