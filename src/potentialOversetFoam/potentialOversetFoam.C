@@ -35,6 +35,8 @@ Author
 
 #include "fvCFD.H"
 #include "oversetMesh.H"
+#include "oversetAdjustPhi.H"
+#include "globalOversetAdjustPhi.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -59,8 +61,9 @@ int main(int argc, char *argv[])
     {
         phi = faceOversetMask*(linearInterpolate(U) & mesh.Sf());
 
-        // Adjust fluxes
-        adjustPhi(phi, U, p);
+        // Adjust overset fluxes
+        oversetAdjustPhi(phi, U); // Fringe flux adjustment
+        globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
         Info<< "Initial flux contour continuity error = "
             << mag(sum(phi.boundaryField()))
@@ -83,6 +86,9 @@ int main(int argc, char *argv[])
          ==
             fvc::div(phi)
         );
+
+        // Adjust non-orthogonal fringe fluxes if necessary
+        om.correctNonOrthoFluxes(pEqn, U);
 
         pEqn.setReference(pRefCell, pRefValue);
         pEqn.solve();
