@@ -67,6 +67,10 @@ class oversetFvPatchField
             //- Coupled fringe
             Switch coupledFringe_;
 
+            //- Correct interpolation for fringe conservation (use for pressure
+            //  only)
+            Switch conservativeCorrection_;
+
             //- Set hole cell value
             Switch setHoleCellValue_;
 
@@ -113,6 +117,15 @@ class oversetFvPatchField
                 fvMatrix<Type>& eqn
             ) const;
 
+
+        // Functions for imposing fringe conservation constraint
+
+            //- Correct interpolated accepto value for fringe conservation
+            void correctFringeConservation
+            (
+                scalarField& psiInterpolated,
+                const lduMatrix& matrix
+            ) const;
 
 
 public:
@@ -192,6 +205,18 @@ public:
         ~oversetFvPatchField();
 
 
+    // Static member functions
+
+        //- Find the overset patch for given field and set the coupled fringe to
+        //  true (default) or false. Needed for correct fringe update of 1/A
+        //  field before interpolation in the pressure equation.
+        static void setCoupledFringe
+        (
+            GeometricField<Type, fvPatchField, volMesh>& psi,
+            const bool coupled = true
+        );
+
+
     // Member functions
 
         // Access
@@ -204,6 +229,12 @@ public:
 
             //- Return neighbour field.  Dummy
             virtual tmp<Field<Type> > patchNeighbourField() const;
+
+            //- Set coupledFringe to true or false
+            void setCoupledFringe(const bool coupled)
+            {
+                coupledFringe_ = coupled;
+            }
 
 
         // Evaluation functions
@@ -293,7 +324,7 @@ public:
                 const Pstream::commsTypes commsType,
                 const bool switchToLhs
             ) const;
-            
+
             //- Calculate patch flux
             virtual void patchFlux
             (
