@@ -8,5 +8,5 @@ cleanCase
 \rm -f .setSet constant/cellDecomposition constant/cellDecomposition.gz
 \rm -rf constant/polyMesh/
 mkdir constant/polyMesh
-\rm -rf 0
+\rm -rf 0 holeTri*
 cp -r save 0

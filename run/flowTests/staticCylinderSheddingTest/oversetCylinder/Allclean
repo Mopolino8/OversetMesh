@@ -5,8 +5,7 @@
 
 cleanCase
 rm -rf constant/polyMesh/
-mkdir constant/polyMesh
 
 \rm -rf 0
 \cp -r save 0
-\rm -f *.dat
+\rm -f *.dat holeTri*

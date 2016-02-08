@@ -7,6 +7,7 @@ application="interOversetFoam"
 
 \rm -rf 0
 cp -r save 0
+mkdir constant/polyMesh
 \cp -f blockMeshDict constant/polyMesh/blockMeshDict
 runApplication blockMesh
 \cp -f boundary constant/polyMesh/boundary
