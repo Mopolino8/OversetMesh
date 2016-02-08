@@ -40,6 +40,8 @@ SourceFiles
 #define overlapFringe_H
 
 #include "oversetFringe.H"
+#include "donorSuitability.H"
+#include "optimisationSwitch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -61,6 +63,15 @@ class overlapFringe
 
         //- Acceptor cells
         mutable labelList* acceptorsPtr_;
+
+        //- Run-time selectable overlap minimisation algorithm
+        autoPtr<donorSuitability::donorSuitability> donorSuitability_;
+
+    
+    //- Bounding box expansion factor. Eligible acceptor cells for the overlap
+    //  fringe are automatically collected as cells within bounding box of a
+    //  donor region. This bounding box is slightly expanded for robustness.
+    static const debug::optimisationSwitch boundBoxExpansionFactor;
 
 
     // Private Member Functions

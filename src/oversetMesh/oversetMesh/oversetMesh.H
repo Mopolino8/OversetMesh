@@ -91,7 +91,7 @@ private:
 
     // Demand-driven data
 
-        // Cell clasification
+        // Cell classification
 
             //- Acceptor cell labels
             mutable labelList* acceptorCellsPtr_;
@@ -143,9 +143,9 @@ private:
             mutable labelList* holeFaceCellsPtr_;
 
             //- List of hole face flip:
-            //  false if hole face points into fringe cell
-            //  (out of the hole cell)
-            //  true if hole face points into a live cell
+            //  false if hole face points into hole cell
+            //  (out of the live (acceptor) cell)
+            //  true if hole face points into a live (acceptor) cell
             mutable boolList* holeFaceFlipsPtr_;
 
             //- List of faces in the region bounded by hole faces
@@ -161,13 +161,25 @@ private:
             //  same processor as the acceptor
             mutable labelList* localDonorsPtr_;
 
+            //- Local donor neighbouring cells: cells where the master donor is
+            //  on the same processor as the acceptor. For each master donor,
+            //  store neighbouring donor cells
+            mutable labelListList* localNeighbouringDonorsPtr_;
+
             //- Local donors addressing: acceptor index for each
-           //  local donor
+            //  local donor
             mutable labelList* localDonorAddrPtr_;
 
             //- Remote donors cells: a local donor cell for which the
             //  acceptor is on a remote processor
             mutable labelList* remoteDonorsPtr_;
+
+            //- Remote donor neighbouring cells: cells where the master donor is
+            //  on local processor, and acceptor is on a remote processor. For
+            //  each master donor, store a list of neighbouring donor cells
+            //  Note: only neighbouring cells on master donor processor are
+            //  considered at the moment
+            mutable labelListList* remoteNeighbouringDonorsPtr_;
 
             //- Remote acceptor addressing: local acceptor cell where the
             //  donor is on a remote processor
@@ -187,7 +199,7 @@ private:
 
 
             //- Overset interpolation
-            mutable oversetInterpolation* interpolationPtr_;
+            autoPtr<oversetInterpolation> interpolationPtr_;
 
 
     // Private member functions
@@ -215,6 +227,29 @@ private:
 
             //- Clear all demand-driven data
             void clearOut() const;
+
+
+        // Helper functions
+
+            //- Recursive function that inserts eligible donor cell neighbours
+            //  in a hash set. Used for makring local and remote neighbouring
+            //  donors.
+            //  Parameters:
+            //  nbrCells - neighbouring cells of a cell (based on level)
+            //  cellCells - passing as a parameter for minor optimisation
+            //  donorMask - mask for eligible donors (holes and acceptors
+            //      excluded)
+            //  extendedNeighbouringDonors - HashSet containing labels of
+            //      extended neighbours
+            //  curLevel - current level used for recursion control
+            void markNeighbouringDonors
+            (
+                const labelList& nbrCells,
+                const labelListList& cellCells,
+                const boolList& donorMask,
+                labelHashSet& extendedNeighbouringDonors,
+                label curLevel
+            ) const;
 
 
 public:
@@ -254,7 +289,7 @@ public:
         }
 
 
-        // Cell clasification
+        // Cell classification
 
             //- Return acceptor cells
             const labelList& acceptorCells() const;
@@ -307,9 +342,9 @@ public:
             const labelList& holeFaceCells() const;
 
             //- Return list of fringe face flip:
-            //  false if fringe face points into fringe cell
-            //  (out of the hole cell)
-            //  true if fringe face points into a hole cell
+            //  false if hole face points into hole cell
+            //  (out of the live (acceptor) cell)
+            //  true if hole face points into a live (acceptor) cell
             const boolList& holeFaceFlips() const;
 
             //- Return list of internal faces in the region bounded by
@@ -322,21 +357,33 @@ public:
 
         // Fringe and interpolation
 
-           //- Return local donor cells: cells where donor and
-           //  acceptor are on the same processor
-           const labelList& localDonors() const;
+            //- Return local donor cells: cells where donor and
+            //  acceptor are on the same processor
+            const labelList& localDonors() const;
 
-           //- Return local donor addressing: acceptor index for each
-           //  local donor
-           const labelList& localDonorAddr() const;
+            //- Return local neighbouring donor cells: cells where master donor
+            //  and acceptor are on the same processor. For each master donor,
+            //  store a list of neighbouring donors
+            const labelListList& localNeighbouringDonors() const;
 
-           //- Return remote donor cells: cells where the donor is local
-           //  and acceptor is on a remote processor
-           const labelList& remoteDonors() const;
+            //- Return local donor addressing: acceptor index for each
+            //  local donor
+            const labelList& localDonorAddr() const;
 
-           //- Return remote acceptor addressing: local acceptor index
-           //  for which donor is on a remote processor
-           const labelList& remoteAcceptorAddr() const;
+            //- Return remote donor cells: cells where the donor is local
+            //  and acceptor is on a remote processor
+            const labelList& remoteDonors() const;
+
+            //- Return remote neighbouring donor cells: cells where the master
+            //  donor is local and acceptor is on a remote processor. For each
+            //  master donor, store a list of neighbouring donors
+            //  Note: only neighbouring cells on master donor processor are
+            //  considered at the moment
+            const labelListList& remoteNeighbouringDonors() const;
+
+            //- Return remote acceptor addressing: local acceptor index
+            //  for which donor is on a remote processor
+            const labelList& remoteAcceptorAddr() const;
 
 
             // Master processor data re-mapping addressing
@@ -344,12 +391,12 @@ public:
 
                 //- Parallel data information processor addressing
                 //  For each global acceptor, record donor processor index
-               const labelListList& globalAcceptFromProc() const;
+                const labelListList& globalAcceptFromProc() const;
 
                 //- Parallel data information cell addressing
                 //  For each global acceptor, record donor cell index
                 const labelListList& globalAcceptFromCell() const;
-    
+
 
             //- Return interpolation
             const oversetInterpolation& interpolation() const;
@@ -362,7 +409,6 @@ public:
                 const Field<Type>& cellField
             ) const;
 
-
             //- Interpolate to acceptors
             template<class Type>
             tmp<Field<Type> > interpolate
@@ -370,6 +416,16 @@ public:
                 const Field<Type>& cellField
             ) const;
 
+
+        // General overset specific functions
+
+            //- Correct non orthogonal fringe flux balance given fvMatrix
+            template<class Type>
+            void correctNonOrthoFluxes
+            (
+                fvMatrix<Type>& eqn,
+                const volVectorField& U
+            ) const;
 
 
         // Mesh object update functions
@@ -390,6 +446,7 @@ public:
 
 #ifdef NoRepository
 #   include "oversetMeshInterpolate.C"
+#   include "oversetMeshFunctions.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

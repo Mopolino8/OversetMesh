@@ -48,7 +48,9 @@ Author
 #include "turbulenceModel.H"
 
 #include "oversetMesh.H"
+#include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
+#include "globalOversetAdjustPhi.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

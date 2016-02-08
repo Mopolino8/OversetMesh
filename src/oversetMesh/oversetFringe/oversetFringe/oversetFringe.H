@@ -34,8 +34,8 @@ Description
     - defines acceptor cells for its region
 
     Donor cells are calculated by oversetRegion, using a list of
-    acceptor cells and 
-    
+    acceptor cells and
+
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.

@@ -32,10 +32,9 @@ Description
     Acceptor value is equal to the donor value, irrespective of the local
     position
 
-    Local and remote donor cells are collected directly
-
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.
+    Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
 
 SourceFiles
     injectionInterpolation.C
@@ -64,11 +63,20 @@ class injectionInterpolation
 
         // Demand-driven data
 
-            //- Addressing
-            mutable labelListList* addressingPtr_;
+            // Note: for each master donor (acceptor), we have a list of scalars
+            // for all donors: master + neighbouring. Master weight is the first
+            // [index 0], followed by neighbouring weights.
 
-            //- Weights
-            mutable FieldField<Field, scalar>* weightsPtr_;
+            //- Weights for local donor/acceptor pairs (all donors and acceptor
+            //  are on the same processor)
+            mutable ScalarFieldField* localWeightsPtr_;
+
+            // Master processor data (only accessible on master processor)
+
+                //- Weights for remote donor/acceptor pairs (all donors are on a
+                //  remote processor). List for all processors is stored on
+                //  master processor (trading off memory for CPU performance)
+                mutable ListScalarFieldField* remoteWeightsPtr_;
 
 
     // Private Member Functions
@@ -80,11 +88,11 @@ class injectionInterpolation
         void operator=(const injectionInterpolation&);
 
 
-        //- Calculate addressing
-        void calcAddressing() const;
+        //- Calculate weights
+        void calcWeights() const;
 
-        //- Clear addressing
-        void clearAddressing() const;
+        //- Clear weights
+        void clearWeights() const;
 
 
 public:
@@ -110,21 +118,14 @@ public:
 
     // Member Functions
 
-            //- Return interpolation local donor list
-            virtual const labelList& localDonors() const;
+        //- Return local donor weights
+        virtual const ScalarFieldField& localWeights() const;
 
-            //- Return interpolation donor list
-            virtual const labelList& remoteDonors() const;
-
-            //- Return acceptor addressing
-            virtual const labelListList& addressing() const;
-
-            //- Return acceptor weights
-            virtual const FieldField<Field, scalar>& weights() const;
-
+        //- Return remote donor weights
+        virtual const ListScalarFieldField& remoteWeights() const;
 
         //- Update the interpolation
-        virtual void update();
+        virtual void update() const;
 };
 
 

@@ -44,44 +44,87 @@ namespace Foam
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::injectionInterpolation::calcAddressing() const
+void Foam::injectionInterpolation::calcWeights() const
 {
-    if (addressingPtr_ || weightsPtr_)
+    if (localWeightsPtr_ || remoteWeightsPtr_)
     {
         FatalErrorIn
         (
-            "void injectionInterpolation::calcAddressing() const"
-        )   << "Addressing already calculated"
+            "void injectionInterpolation::calcWeights() const"
+        )   << "Weights already calculated."
             << abort(FatalError);
     }
 
+    // Get list of local donors
+    const labelList& ld = overset().localDonors();
 
-    addressingPtr_ = new labelListList(overset().acceptorCells().size());
-    labelListList& addr = *addressingPtr_;
+    // Get list of neighbouring donors (needed to set appropriate size of each
+    // bottom most list of weights - for all donors)
+    const labelListList& lnd = overset().localNeighbouringDonors();
 
-    weightsPtr_ = new FieldField<Field, scalar>
-    (
-        overset().acceptorCells().size()
-    );
-    FieldField<Field, scalar>& w = *weightsPtr_;
+    // Create a local weight field
+    localWeightsPtr_ = new ScalarFieldField(ld.size());
+    ScalarFieldField& localWeights = *localWeightsPtr_;
 
-    const labelList& donors = overset().localDonors();
-
-    forAll (addr, addrI)
+    // Loop through local donors, setting the weights
+    forAll (ld, ldI)
     {
-        // Single donor addressing
-        addr[addrI].setSize(1);
-        addr[addrI][0] = donors[addrI];
+        // Set the size of this donor weight field (master donor (1) +
+        // neighbouring donors). Set the size and all values to zero.
+        localWeights.set
+        (
+            ldI,
+            new scalarField(1 + lnd[ldI].size(), 0)
+        );
 
-        w.set(addrI, new scalarField(1, scalar(1)));
+        // Injection interpolation: set the first value to 1 (master donor
+        // contribution), others (neighbouring donors) are 0.
+        localWeights[ldI][0] = 1;
+    }
+
+    // Handling remote donors for a parallel run
+    if (Pstream::parRun())
+    {
+        // Get remote donor addressing
+        const labelList& rd = overset().remoteDonors();
+        const labelListList& rnd = overset().remoteNeighbouringDonors();
+
+        // Create a global weights list for remote donor weights
+        remoteWeightsPtr_ = new ListScalarFieldField(Pstream::nProcs());
+        ListScalarFieldField& remoteWeights = *remoteWeightsPtr_;
+
+        // Set the size of the weight field for this processor
+        ScalarFieldField& myProcRemoteWeights =
+            remoteWeights[Pstream::myProcNo()];
+        myProcRemoteWeights.setSize(rd.size());
+
+        // Loop through remote donors and calculate weights
+        forAll (rd, rdI)
+        {
+            // Allocate the storage for this donor weight field (master donor
+            // (1) + neighbouring donors). Set the size and all values to zero.
+            myProcRemoteWeights.set
+            (
+                rdI,
+                new scalarField(1 + rnd[rdI].size(), 0)
+            );
+
+            // Injection interpolation: set the first value to 1 (master donor
+            // contribution), others (neighbouring donors) are 0.
+            myProcRemoteWeights[rdI][0] = 1;
+        }
+
+        // Gather remote weights (no need to scatter since the data is needed
+        // only for the master processor).
+        Pstream::gatherList(remoteWeights);
     }
 }
 
 
-void Foam::injectionInterpolation::clearAddressing() const
+void Foam::injectionInterpolation::clearWeights() const
 {
-    deleteDemandDrivenData(addressingPtr_);
-    deleteDemandDrivenData(weightsPtr_);
+    deleteDemandDrivenData(localWeightsPtr_);
+    deleteDemandDrivenData(remoteWeightsPtr_);
 }
 
 
@@ -94,8 +137,8 @@ Foam::injectionInterpolation::injectionInterpolation
 )
 :
     oversetInterpolation(overset, dict),
-    addressingPtr_(NULL),
-    weightsPtr_(NULL)
+    localWeightsPtr_(NULL),
+    remoteWeightsPtr_(NULL)
 {}
 
 
@@ -103,52 +146,71 @@ Foam::injectionInterpolation::injectionInterpolation
 
 Foam::injectionInterpolation::~injectionInterpolation()
 {
-    clearAddressing();
+    clearWeights();
 }
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::labelList& Foam::injectionInterpolation::localDonors() const
+const Foam::oversetInterpolation::ScalarFieldField&
+Foam::injectionInterpolation::localWeights() const
 {
-    // Compact addressing: single donor for single cell injection
-    return overset().localDonors();
-}
-
-
-const Foam::labelList& Foam::injectionInterpolation::remoteDonors() const
-{
-    // Compact addressing: single donor for single cell injection
-    return overset().remoteDonors();
-}
-
-
-const Foam::labelListList& Foam::injectionInterpolation::addressing() const
-{
-    if (!addressingPtr_)
+    if (!localWeightsPtr_)
     {
-        calcAddressing();
+        calcWeights();
     }
 
-    return *addressingPtr_;
+    return *localWeightsPtr_;
 }
 
 
-const Foam::FieldField<Foam::Field, Foam::scalar>&
-Foam::injectionInterpolation::weights() const
+const Foam::oversetInterpolation::ListScalarFieldField&
+Foam::injectionInterpolation::remoteWeights() const
 {
-    if (!weightsPtr_)
+    // We cannot calculate the remoteWeights using usual lazy evaluation
+    // mechanism since the data only exists on the master processor. Add
+    // additional guards, VV, 8/Feb/2016.
+    if (!Pstream::parRun())
     {
-        calcAddressing();
+        FatalErrorIn
+        (
+            "const oversetInterpolation::ListScalarFieldField&\n"
+            "injectionInterpolation::remoteWeights() const"
+        )   << "Attempted to calculate remoteWeights for a serial run."
+            << "This is not allowed."
+            << abort(FatalError);
+    }
+    else if (!Pstream::master())
+    {
+        FatalErrorIn
+        (
+            "const oversetInterpolation::ListScalarFieldField&\n"
+            "injectionInterpolation::remoteWeights() const"
+        )   << "Attempted to calculate remoteWeights for a slave processor. "
+            << "This is not allowed."
+            << abort(FatalError);
+    }
+    else if (!remoteWeightsPtr_)
+    {
+        FatalErrorIn
+        (
+            "const oversetInterpolation::ListScalarFieldField&\n"
+            "injectionInterpolation::remoteWeights() const"
+        )   << "Calculation of remoteWeights not possible because the data \n"
+            << "exists only on the master processor. Please calculate \n"
+            << "localWeights first (call .localWeights() member function)."
+            << abort(FatalError);
     }
 
-    return *weightsPtr_;
+    return *remoteWeightsPtr_;
 }
 
 
-void Foam::injectionInterpolation::update()
+void Foam::injectionInterpolation::update() const
 {
     Info<< "injectionInterpolation::update()" << endl;
+
+    clearWeights();
 }
 
 

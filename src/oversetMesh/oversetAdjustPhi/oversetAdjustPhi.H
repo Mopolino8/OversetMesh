@@ -48,7 +48,7 @@ namespace Foam
 void oversetAdjustPhi
 (
     surfaceScalarField& phi,
-    volVectorField& U
+    const volVectorField& U
 );
 
 } // End namespace Foam

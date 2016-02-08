@@ -4,12 +4,12 @@
         pd.storePrevIter();
     }
 
-    volScalarField rUA = 1.0/UEqn.A();
-    surfaceScalarField rUAf = fvc::interpolate(rUA);
+    rAU = 1.0/UEqn.A();
+    rAU.correctBoundaryConditions(); // Overset update
+    surfaceScalarField rAUf = fvc::interpolate(rAU);
 
-    U = rUA*UEqn.H();
-    // Overset update
-    U.correctBoundaryConditions();
+    U = rAU*UEqn.H();
+    U.correctBoundaryConditions(); // Overset update
 
     surfaceScalarField phiU
     (
@@ -18,23 +18,26 @@
     );
 
     // Adjust overset fluxes
-    oversetAdjustPhi(phiU, U);
-    adjustPhi(phiU, U, pd);
+    oversetAdjustPhi(phi, U); // Fringe flux adjustment
+    globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
     phi = phiU
       + faceOversetMask*
         (
             fvc::interpolate(interface.sigmaK())*fvc::snGrad(alpha1)
           - ghf*fvc::snGrad(rho)
-        )*rUAf*mesh.magSf();
+        )*rAUf*mesh.magSf();
 
 
     for(int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
     {
         fvScalarMatrix pdEqn
         (
-            fvm::laplacian(rUAf, pd) == fvc::div(phi)
+            fvm::laplacian(rAUf, pd) == fvc::div(phi)
         );
+
+        // Adjust non-orthogonal fringe fluxes if necessary
+        om.correctNonOrthoFluxes(pdEqn, U);
 
         pdEqn.setReference(pRefCell, pRefValue);
 
@@ -59,6 +62,6 @@
         pd.relax();
     }
 
-    U += rUA*fvc::reconstruct((phi - phiU)/rUAf);
+    U += rAU*fvc::reconstruct((phi - phiU)/rAUf);
     U.correctBoundaryConditions();
 }

@@ -240,6 +240,15 @@ public:
                 donorPoint_ = donorPoint;
             }
 
+            //- Reject donor: used in overlap minimisation algorithms via Donor
+            //  Suitability Function
+            void rejectDonor()
+            {
+                donorCell_ = -1;
+                donorProcNo_ = -1;
+                donorPoint_ = vector::zero;
+            }
+
 
     // Member Operators
 

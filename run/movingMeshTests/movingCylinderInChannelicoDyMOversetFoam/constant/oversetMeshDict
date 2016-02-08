@@ -32,6 +32,12 @@ regions
         fringe
         {
             type overlap;
+
+            donorSuitability
+            {
+                type      noSuitability;
+                threshold 1;
+            }
         }
     }
 

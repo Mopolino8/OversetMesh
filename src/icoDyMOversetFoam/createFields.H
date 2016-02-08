@@ -52,3 +52,20 @@
     setRefCell(p, mesh.solutionDict().subDict("PISO"), pRefCell, pRefValue);
 
 #   include "writeOversetMasks.H"
+
+    // Create 1/A field for easier overset fringe update
+    volScalarField rAU
+    (
+        IOobject
+        (
+            "rAU",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("dt", dimTime, 1.0),
+        zeroGradientFvPatchScalarField::typeName
+    );
+    oversetFvPatchScalarField::setCoupledFringe(rAU);

@@ -29,6 +29,7 @@
         dimensionedScalar("pcorr", p.dimensions(), 0),
         pcorrTypes
     );
+    oversetFvPatchScalarField::setCoupledFringe(pcorr);
 
     // Initialise flux with interpolated velocity
     phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());

@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -2 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    overset
+    {
+        type                   overset;
+        coupledFringe          yes;
+        conservativeCorrection yes;
+        setHoleCellValue       yes;
+        holeCellValue          0;
+        value                  nonuniform 0();
+    }
+    shaft
+    {
+        type            zeroGradient;
+    }
+    shaftLong
+    {
+        type            zeroGradient;
+    }
+    propeller
+    {
+        type            zeroGradient;
+    }
+    propellerFarfield
+    {
+        type            emptyOverset;
+        value           uniform 0;
+    }
+    propellerHole
+    {
+        type            emptyOverset;
+        value           uniform 0;
+    }
+    inlet
+    {
+        type            zeroGradient;
+    }
+    outlet
+    {
+        type            zeroGradient;
+    }
+    farfield
+    {
+        type            zeroGradient;
+    }
+}
+
+
+// ************************************************************************* //

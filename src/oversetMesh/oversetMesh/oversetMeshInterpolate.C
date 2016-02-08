@@ -57,34 +57,94 @@ void Foam::oversetMesh::interpolate
             << abort(FatalError);
     }
 
-    // Insert local donors into local acceptors
+    // Get local interpolation weights
+    // For each acceptor cell, weights are stored in the following fashion:
+    // - zeroth entry is the weight corresponding to the master donor cell
+    // - other entries are weights corresponding to neighbouring donor cells
+    // Hence, each acceptor cell has 1 + n values, where n is the number of
+    // eligible neighbours of the master donor cell, and the 1 comes from the
+    // master donor cell itself.
+    const oversetInterpolation::ScalarFieldField& localWeights =
+        interpolation().localWeights();
 
     // Get list of local donors
     const labelList& ld = this->localDonors();
 
+    // Get local neighbouring donors
+    const labelListList& lnd = this->localNeighbouringDonors();
+
     // Get local donor addressing
     const labelList& ldAddr = this->localDonorAddr();
 
+    // Loop through local donors
     forAll (ld, ldI)
     {
-        accF[ldAddr[ldI]] = cellF[ld[ldI]];
+        // Get weights for donor cells of this acceptor
+        const scalarField& donorWeights = localWeights[ldI];
+
+        // Get reference to the current acceptor value
+        Type& curAccF = accF[ldAddr[ldI]];
+
+        // First set master donor contribution
+        curAccF = donorWeights[0]*cellF[ld[ldI]];
+
+        // Add contributions from neighbouring donors
+        const labelList& curNbrDonors = lnd[ldI];
+        forAll (curNbrDonors, nbrI)
+        {
+            // Note nbrI + 1 index for subscripting because the first entry
+            // in weights corresponds to the master donor
+            curAccF += donorWeights[nbrI + 1]*cellF[curNbrDonors[nbrI]];
+        }
     }
 
     if (Pstream::parRun())
     {
         // Get remote donor addressing
-        const labelList& rdAddr = this->remoteDonors();
+        const labelList& rd = this->remoteDonors();
+        const labelListList& rnd = this->remoteNeighbouringDonors();
 
-        // Collect remote donors for communication
-        List<List<Type> > globalRemoteDonors(Pstream::nProcs());
+        // We will combine all the donor values (from master donor cell and
+        // neighbouring donors) in a single list (similar to weights) in order
+        // to have only one parallel communication instead of two
+        List<FieldField<Field, Type> > globalRemoteDonors(Pstream::nProcs());
 
-        // Fill in remote donors
-        List<Type>& rd = globalRemoteDonors[Pstream::myProcNo()];
-        rd.setSize(rdAddr.size());
+        // Fill in all remote donors (master + neighbouring donors)
+        FieldField<Field, Type>& rdAll =
+            globalRemoteDonors[Pstream::myProcNo()];
 
-        forAll (rdAddr, rdI)
+        // Set the size for each processor to correspond to the number of remote
+        // donors (master donors)
+        rdAll.setSize(rd.size());
+
+        // For all master donors, allocate necessary storage for neighbouring
+        // donors as well
+        forAll (rdAll, rdI)
         {
-            rd[rdI] = cellF[rdAddr[rdI]];
+            // Get a list of neighbouring donors
+            const labelList& rndCur = rnd[rdI];
+
+            // Allocate necessary storage, setting the size of this donor field
+            // (master donor (1) + neighbouring donors) and initialising with
+            // zero
+            rdAll.set
+            (
+                rdI,
+                new Field<Type>(1 + rndCur.size(), pTraits<Type>::zero)
+            );
+
+            // Get reference to all current remote donor values
+            Field<Type>& rdAllCur = rdAll[rdI];
+
+            // Populate the donor values to prepare for communication
+            // First value is master donor value
+            rdAllCur[0] = cellF[rd[rdI]];
+
+            // Successive values are neighbouring donors for this master donor
+            forAll (rndCur, nbrI)
+            {
+                rdAllCur[nbrI + 1] = cellF[rndCur[nbrI]];
+            }
         }
 
         // Communicate to master
@@ -92,8 +152,8 @@ void Foam::oversetMesh::interpolate
 
         // Prepare acceptor list
         List<List<Type> > globalRemoteAcceptors(Pstream::nProcs());
-    
-        // Master processor reorganises the donor data for each targer
+
+        // Master processor reorganises the donor data for each target
         if (Pstream::master())
         {
             // Get addressing
@@ -114,11 +174,40 @@ void Foam::oversetMesh::interpolate
                 // Resize results list
                 procRA.setSize(procAccProc.size());
 
+                // Get remote interpolation weights. For each processor, each
+                // acceptor cell is associated with a master donor cell and its
+                // eligible neighbours (live and other donor cells).
+                const oversetInterpolation::ListScalarFieldField& remWeights =
+                    interpolation().remoteWeights();
+
                 forAll (procRA, accI)
                 {
-                    procRA[accI] =
-                        globalRemoteDonors[procAccProc[accI]]
-                        [procAccCell[accI]];
+                    // Get remote processor index for remote donors
+                    const label& donorProcIndex = procAccProc[accI];
+
+                    // Get remote donor index
+                    const label& donorIndex = procAccCell[accI];
+
+                    // Get weights for this set of donors (associated with this
+                    // acceptor)
+                    const scalarField& donorWeights =
+                        remWeights[donorProcIndex][donorIndex];
+
+                    // Get all current remote donors
+                    const Field<Type>& allDonorsForCurAcceptor =
+                        globalRemoteDonors[donorProcIndex][donorIndex];
+
+                    // Get reference of the current acceptor value and reset it
+                    Type& curProcRA = procRA[accI];
+                    curProcRA = pTraits<Type>::zero;
+
+                    // Calculate the acceptor value from all weighted remote
+                    // donor values
+                    forAll (allDonorsForCurAcceptor, rdI)
+                    {
+                        curProcRA +=
+                            donorWeights[rdI]*allDonorsForCurAcceptor[rdI];
+                    }
                 }
             }
         }

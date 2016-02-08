@@ -32,7 +32,6 @@ Description
 \*---------------------------------------------------------------------------*/
 
 {
-//     volScalarField contErr = fvc::div(faceOversetMask*phi);
     volScalarField contErr = cellOversetMask*fvc::div(phi);
 
     sumLocalContErr = runTime.deltaT().value()*
@@ -44,7 +43,8 @@ Description
     cumulativeContErr += globalContErr;
 
     Info<< "Overset time step continuity errors : "
-        << "sum local = " << sumLocalContErr
+        << "max local = " << gMax(contErr)
+        << ", sum local = " << sumLocalContErr
         << ", global = " << globalContErr
         << ", cumulative = " << cumulativeContErr
         << endl;

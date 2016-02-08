@@ -27,6 +27,8 @@ License
 #include "overlapFringe.H"
 #include "oversetRegion.H"
 #include "oversetMesh.H"
+#include "cellSet.H"
+#include "boxToCell.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -36,6 +38,15 @@ namespace Foam
     defineTypeNameAndDebug(overlapFringe, 0);
     addToRunTimeSelectionTable(oversetFringe, overlapFringe, dictionary);
 }
+
+
+const Foam::debug::optimisationSwitch
+Foam::overlapFringe::boundBoxExpansionFactor
+(
+    "boundBoxExpansionFactor",
+    0.02 // 2 percent of the bounding box span
+);
+
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
@@ -66,12 +77,75 @@ void Foam::overlapFringe::calcAddressing() const
     const vectorField& cc = mesh.cellCentres();
 
     // Prepare list of potential acceptor cells
+    labelList masterCells;
 
-    // Get addressing from master region
-    const labelList& masterCells = region().regionCells();
+    // Get donor regions
+    const labelList& dr = region().donorRegions();
+
+    // Memory management
+    {
+        // Create an empty cell set which will contain eligible acceptors
+        cellSet eligibleAcceptorSet
+        (
+            mesh,
+            "eligibleAcceptorCellSet",
+            region().regionCells().size() // Reasonable size estimate
+        );
+
+        // Loop through all regions and populate the cell set according to
+        // bounding boxes of a region
+        forAll(dr, drI)
+        {
+            // Get local bounds of this region
+            boundBox regionBB =
+                region().overset().regions()[dr[drI]].globalBounds();
+
+            // Expand the bounding box a bit
+            const vector bbExpandVector =
+                boundBoxExpansionFactor()*regionBB.span();
+            regionBB.max() += bbExpandVector;
+            regionBB.min() -= bbExpandVector;
+
+            const boxToCell donorRegionBox
+            (
+                mesh,
+                treeBoundBox(regionBB)
+            );
+
+            // Add cells inside this bounding box to eligibleAcceptorSet
+            if (drI == 0)
+            {
+                donorRegionBox.applyToSet
+                (
+                    topoSetSource::NEW,
+                    eligibleAcceptorSet
+                );
+            }
+            else
+            {
+                donorRegionBox.applyToSet
+                (
+                    topoSetSource::ADD,
+                    eligibleAcceptorSet
+                );
+            }
+        }
+
+        // Remove donor region cells
+        const cellSet masterRegionSet
+        (
+            mesh,
+            "masterCellSet",
+            labelHashSet(region().regionCells())
+        );
+        eligibleAcceptorSet.subset(masterRegionSet);
+
+        // Get addressing for acceptor candidates from eligible acceptor set
+        masterCells = eligibleAcceptorSet.toc();
+    }
 
     // Get holes in form of mask
-    boolList holeMask(region().mesh().nCells(), false);
+    boolList holeMask(mesh.nCells(), false);
 
     // Get and mark holes
     const labelList& masterHoles = region().holes();
@@ -105,9 +179,6 @@ void Foam::overlapFringe::calcAddressing() const
             nAcCand++;
         }
     }
-
-    // Perform search to see which cells can find valid donors
-    const labelList& dr = region().donorRegions();
 
     if (Pstream::parRun())
     {
@@ -143,9 +214,6 @@ void Foam::overlapFringe::calcAddressing() const
 
             const labelList& curDonors = curDonorRegion.eligibleDonors();
 
-            // Get donor bounding box
-            const boundBox& localBounds = curDonorRegion.localBounds();
-
             // Get donor tree
             const indexedOctree<treeDataCell>& tree =
                 curDonorRegion.cellSearch();
@@ -172,15 +240,6 @@ void Foam::overlapFringe::calcAddressing() const
                     if (!curDA[daI].donorFound())
                     {
                         const vector& curP = curDA[daI].acceptorPoint();
-
-                        // Quick reject: is the acceptor candidate within the
-                        // donor bounding box
-                        if (!localBounds.contains(curP))
-                        {
-                            // Outside global bounds of donor region
-                            // Cannot find donor
-                            continue;
-                        }
 
                         // Find nearest cell with octree
                         // Note: octree only contains eligible cells
@@ -232,7 +291,7 @@ void Foam::overlapFringe::calcAddressing() const
                 // Receive list from slave
                 IPstream fromSlave
                 (
-                    Pstream::blocking,
+                    Pstream::scheduled,
                     procI
                 );
 
@@ -281,7 +340,7 @@ void Foam::overlapFringe::calcAddressing() const
             // Slave processor: send global list to master
             OPstream toMaster
             (
-                Pstream::blocking,
+                Pstream::scheduled,
                 Pstream::masterNo()
             );
 
@@ -315,9 +374,6 @@ void Foam::overlapFringe::calcAddressing() const
 
             const labelList& curDonors = curDonorRegion.eligibleDonors();
 
-            // Get donor bounding boxes
-            const boundBox& globalBounds = curDonorRegion.globalBounds();
-
             // Get donor tree
             const indexedOctree<treeDataCell>& tree =
                 curDonorRegion.cellSearch();
@@ -338,15 +394,6 @@ void Foam::overlapFringe::calcAddressing() const
                 {
                     const label& curCell = acCand[acI].acceptorCell();
                     const vector& curCentre = cc[curCell];
-
-                    // Quick reject: is the acceptor candidate within the
-                    // donor bounding box
-                    if (!globalBounds.contains(curCentre))
-                    {
-                        // Outside global bounds of donor region
-                        // Cannot find donor here
-                        continue;
-                    }
 
                     // Find nearest cell in the current master region
                     pointIndexHit pih = tree.findNearest(curCentre, span);
@@ -389,11 +436,40 @@ void Foam::overlapFringe::calcAddressing() const
 
     forAll (acCand, acI)
     {
-        if (acCand[acI].donorFound())
-        {
-            acc[nAcc] = acCand[acI].acceptorCell();
+        // Get current donor acceptor
+        const donorAcceptor& curAcCand = acCand[acI];
 
+        if (donorSuitability_->isDonorSuitable(curAcCand))
+        {
+            acc[nAcc] = curAcCand.acceptorCell();
             nAcc++;
+        }
+    }
+
+    // Cells near holes must be acceptors. Loop through hole cells and mark
+    // their neighbours as acceptors if they aren't holes
+    const labelListList& cellCells = mesh.cellCells();
+
+    forAll (masterHoles, mhI)
+    {
+        const label& holeCellI = masterHoles[mhI];
+
+        // Loop through neighbouring cells for this hole cell
+        const labelList& nbrCells = cellCells[holeCellI];
+
+        forAll (nbrCells, nbrI)
+        {
+            const label& curNbr = nbrCells[nbrI];
+
+            // If the neighbouring cell is not a hole, it has to be an acceptor
+            if (!holeMask[curNbr])
+            {
+                acc[nAcc] = nbrCells[nbrI];
+                nAcc++;
+
+                // Mark the neighbour as a hole to prevent duplication
+                holeMask[curNbr] = true;
+            }
         }
     }
 
@@ -424,7 +500,11 @@ Foam::overlapFringe::overlapFringe
 :
     oversetFringe(mesh, region, dict),
     fringeHolesPtr_(NULL),
-    acceptorsPtr_(NULL)
+    acceptorsPtr_(NULL),
+    donorSuitability_
+    (
+        donorSuitability::donorSuitability::New(*this, dict)
+    )
 {}
 
 

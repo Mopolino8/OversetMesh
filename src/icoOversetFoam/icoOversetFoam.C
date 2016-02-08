@@ -36,7 +36,9 @@ Author
 
 #include "fvCFD.H"
 #include "oversetMesh.H"
+#include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
+#include "globalOversetAdjustPhi.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -73,24 +75,27 @@ int main(int argc, char *argv[])
 
         for (int corr = 0; corr < nCorr; corr++)
         {
-            volScalarField rUA = 1.0/UEqn.A();
+            rAU = 1.0/UEqn.A();
+            rAU.correctBoundaryConditions(); // Overset update
 
-            U = rUA*UEqn.H();
-            // Overset update
-            U.correctBoundaryConditions();
+            U = rAU*UEqn.H();
+            U.correctBoundaryConditions(); // Overset update
 
             phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
 
             // Adjust overset fluxes
-            oversetAdjustPhi(phi, U);
-            adjustPhi(phi, U, p);
+            oversetAdjustPhi(phi, U); // Fringe flux adjustment
+            globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
             for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
             {
                 fvScalarMatrix pEqn
                 (
-                    fvm::laplacian(rUA, p) == fvc::div(phi)
+                    fvm::laplacian(rAU, p) == fvc::div(phi)
                 );
+
+                // Adjust non-orthogonal fringe fluxes if necessary
+                om.correctNonOrthoFluxes(pEqn, U);
 
                 pEqn.setReference(pRefCell, pRefValue);
                 pEqn.solve();
@@ -103,7 +108,7 @@ int main(int argc, char *argv[])
 
 #           include "oversetContinuityErrs.H"
 
-            U -= rUA*fvc::grad(p);
+            U -= rAU*fvc::grad(p);
             U.correctBoundaryConditions();
         }
 

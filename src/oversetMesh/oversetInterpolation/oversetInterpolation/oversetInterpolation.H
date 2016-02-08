@@ -27,10 +27,19 @@ Class
 
 Description
     Virtual base class for overset interpolation selection.
-    Handles cached addressing and weights
+    Handles cell centres of global (remote) acceptors indexed by remote donors
+    for parallel runs using higher order interpolation schemes (inverse
+    distance, least squares...). Stored this way for easier use in derived
+    classes.
+
+    Derived classes handle cached weights which are stored in two parts:
+    1. localWeights - where donors are on the same processor as acceptor
+    2. remoteWeights - where donors are on remote processor
+       Note: only master processor holds remoteWeights.
 
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.
+    Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
 
 SourceFiles
     oversetInterpolation.C
@@ -45,7 +54,8 @@ SourceFiles
 #include "typeInfo.H"
 #include "labelList.H"
 #include "scalarField.H"
-#include "FieldField.H"
+#include "vectorField.H"
+#include "scalarFieldField.H"
 #include "runTimeSelectionTables.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -61,10 +71,38 @@ class oversetMesh;
 
 class oversetInterpolation
 {
+public:
+
+    // Public data types
+
+        typedef FieldField<Field, scalar> ScalarFieldField;
+        typedef List<ScalarFieldField> ListScalarFieldField;
+
+        typedef List<vectorField> ListVectorField;
+
+
+private:
+
     // Private data
 
         //- Overset mesh reference
         const oversetMesh& overset_;
+
+        //- Run time selectable donor extension level:
+        // 0 = one level of neighbours are used (immediate neighbours)
+        // 1 = two levels of neighbours are used (neighbours of neighbours)
+        // 2 = ...
+        // Extension level is used by oversetMesh class when marking local and
+        // remote donors for given acceptor. Default value is 0.
+        const label extensionLevel_;
+
+
+        // Demand-driven data
+
+            //- Cell centres of global acceptors indexed by local donor indices
+            //  for easier calculation of weights in parallel runs for higher
+            //  order interpolation schemes
+            mutable ListVectorField* remoteAccCCPtr_;
 
 
     // Private Member Functions
@@ -74,6 +112,13 @@ class oversetInterpolation
 
         //- Disallow default bitwise assignment
         void operator=(const oversetInterpolation&);
+
+
+        //- Calculate remote acceptor cell centres
+        void calcRemoteAccCC() const;
+
+        //- Clear remote acceptor cell centres
+        void clearRemoteAccCC() const;
 
 
 public:
@@ -119,8 +164,7 @@ public:
 
     // Destructor
 
-        virtual ~oversetInterpolation()
-        {}
+        virtual ~oversetInterpolation();
 
 
     // Member Functions
@@ -133,24 +177,24 @@ public:
                 return overset_;
             }
 
+            //- Return extension level
+            label extensionLevel() const
+            {
+                return extensionLevel_;
+            }
 
-        // Interpolation data
+            //- Return local donor weights
+            virtual const ScalarFieldField& localWeights() const = 0;
 
-            //- Return interpolation local donor list
-            virtual const labelList& localDonors() const = 0;
+            //- Return remote donor weights
+            virtual const ListScalarFieldField& remoteWeights() const = 0;
 
-            //- Return interpolation donor list
-            virtual const labelList& remoteDonors() const = 0;
-
-            //- Return acceptor addressing
-            virtual const labelListList& addressing() const = 0;
-
-            //- Return acceptor weights
-            virtual const FieldField<Field, scalar>& weights() const = 0;
+            //- Return remote acceptor cell centres
+            virtual const ListVectorField& remoteAccCC() const;
 
 
         //- Update the interpolation
-        virtual void update() = 0;
+        virtual void update() const;
 };
 
 

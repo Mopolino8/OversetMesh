@@ -1,0 +1,46 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    p
+    {
+        solver            BiCGStab;
+        preconditioner    Cholesky;
+        minIter           0;
+        maxIter           1000;
+        tolerance         1e-14; // Tight tolerance for conservation testing
+        relTol            0.0;
+    }
+}
+
+PISO
+{
+    pRefPoint (-1.35 -0.65 0);
+    pRefValue 0;
+
+    nNonOrthogonalCorrectors 2;
+    nCorrectors 0;
+}
+
+
+relaxationFactors
+{
+    p           1;
+}
+
+
+// ************************************************************************* //

@@ -38,7 +38,9 @@ Description
 #include "turbulenceModel.H"
 #include "dynamicFvMesh.H"
 #include "oversetMesh.H"
+#include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
+#include "globalOversetAdjustPhi.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -108,23 +110,23 @@ int main(int argc, char *argv[])
             for (int corr = 0; corr < nCorr; corr++)
             {
                 rAU = 1.0/UEqn.A();
+                rAU.correctBoundaryConditions(); // Overset update
                 surfaceScalarField rAUf = fvc::interpolate(rAU);
 
                 U = rAU*UEqn.H();
-                // Overset update
-                U.correctBoundaryConditions();
+                U.correctBoundaryConditions(); // Overset update
 
                 surfaceScalarField phiU
                 (
                     "phiU",
-                    faceOversetMask*(fvc::interpolate(U) & mesh.Sf())
+                    fvc::interpolate(U) & mesh.Sf()
                 );
 
                 phi = phiU;
 
                 // Adjust overset fluxes
-                oversetAdjustPhi(phi, U);
-                adjustPhi(phi, U, p);
+                oversetAdjustPhi(phi, U); // Fringe flux adjustment
+                globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
                 for (int nonOrth=0; nonOrth<=nNonOrthCorr; nonOrth++)
                 {
@@ -132,6 +134,9 @@ int main(int argc, char *argv[])
                     (
                         fvm::laplacian(rAUf, p) == fvc::div(phi)
                     );
+
+                    // Adjust non-orthogonal fringe fluxes if necessary
+                    om.correctNonOrthoFluxes(pEqn, U);
 
                     pEqn.setReference(pRefCell, pRefValue);
 
@@ -165,7 +170,8 @@ int main(int argc, char *argv[])
                     p.relax();
                 }
 
-//                U -= rAU*fvc::grad(p);
+#               include "movingMeshContinuityErrs.H"
+
                 U += rAU*fvc::reconstruct((phi - phiU)/rAUf);
                 U.correctBoundaryConditions();
 

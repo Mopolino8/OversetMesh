@@ -39,7 +39,9 @@ Author
 #include "RASModel.H"
 
 #include "oversetMesh.H"
+#include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
+#include "globalOversetAdjustPhi.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
