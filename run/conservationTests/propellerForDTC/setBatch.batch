@@ -1,0 +1,6 @@
+cellSet propeller new cellToCell cellRegion0
+cellSet background new cellToCell cellRegion1
+
+cellSet cellRegion0 delete
+cellSet cellRegion1 delete
+quit

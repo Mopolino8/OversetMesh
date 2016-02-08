@@ -3,4 +3,5 @@
 ( cd simpleTests ; ./Allclean )
 ( cd flowTests ; ./Allclean )
 ( cd movingMeshTests ; ./Allclean )
+( cd conservationTests ; ./Allclean )
 ( cd freeSurfaceTests ; ./Allclean )

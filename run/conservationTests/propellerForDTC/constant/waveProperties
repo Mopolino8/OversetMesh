@@ -1,0 +1,72 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM Extend Project: Open source CFD        |
+|  \\    /   O peration     | Version:  3.1-ext                               |
+|   \\  /    A nd           | Web:      www.extend-project.de                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      waveProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+seaLevel    0.00;
+
+waveTheories ();
+
+relaxationNames ();
+
+initWaveTheory noWaves;
+
+noWavesCoeffs
+{
+    waveType    noWaves;
+
+    currentType  constantCurrent;
+    U0          (2.196 0 0);
+    wind        (2.196 0 0);
+
+    rampTime     0;
+
+    iterateDistance no;
+}
+
+
+inletCoeffs
+{
+    waveTheoryName noWaves;
+
+    relaxationZone
+    {
+        zoneName         inletZone;
+        relaxationScheme spatial;
+        relaxationShape  rectangular;
+        origin           (-10.9214 0 0);
+        boundaryType     inlet;
+
+        orientation      (1 0 0);
+    }
+}
+
+outletCoeffs
+{
+    waveTheoryName noWaves;
+
+    relaxationZone
+    {
+        zoneName         outletZone;
+        relaxationScheme spatial;
+        relaxationShape  rectangular;
+        boundaryType     outlet;
+        origin           (36.3886 0 0);
+
+        orientation      (-1 0 0);
+    }
+}
+
+
+// ************************************************************************* //
