@@ -165,8 +165,6 @@ int main(int argc, char *argv[])
                     p.relax();
                 }
 
-#               include "movingMeshContinuityErrs.H"
-
 //                U -= rAU*fvc::grad(p);
                 U += rAU*fvc::reconstruct((phi - phiU)/rAUf);
                 U.correctBoundaryConditions();
