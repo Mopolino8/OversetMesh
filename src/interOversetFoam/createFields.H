@@ -119,3 +119,20 @@
     (
         incompressible::turbulenceModel::New(U, phi, twoPhaseProperties)
     );
+
+    Info<< "Reading field rAU if present\n" << endl;
+    volScalarField rAU
+    (
+        IOobject
+        (
+            "rAU",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        runTime.deltaT()/rho1,
+        zeroGradientFvPatchScalarField::typeName
+    );
+    oversetFvPatchScalarField::setCoupledFringe(rAU);

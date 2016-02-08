@@ -1,23 +1,26 @@
-    volScalarField AU = UEqn().A();
+    rAU = 1.0/UEqn().A();
+    rAU.correctBoundaryConditions(); // Overset update
 
-    U = UEqn().H()/AU;
-    // Overset update
-    U.correctBoundaryConditions();
+    U = rAU*UEqn().H();
+    U.correctBoundaryConditions(); // Overset update
 
     UEqn.clear();
     phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
 
     // Adjust overset fluxes
-    oversetAdjustPhi(phi, U);
-    adjustPhi(phi, U, p);
+    oversetAdjustPhi(phi, U); // Fringe flux adjustment
+    globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
     // Non-orthogonal pressure corrector loop
     for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
     {
         fvScalarMatrix pEqn
         (
-            fvm::laplacian(1.0/AU, p) == fvc::div(phi)
+            fvm::laplacian(rAU, p) == fvc::div(phi)
         );
+
+        // Adjust non-orthogonal fringe fluxes if necessary
+        om.correctNonOrthoFluxes(pEqn, U);
 
         pEqn.setReference(pRefCell, pRefValue);
 
@@ -44,6 +47,6 @@
     p.relax();
 
     // Momentum corrector
-    U -= fvc::grad(p)/AU;
+    U -= rAU*fvc::grad(p);
     U.correctBoundaryConditions();
 

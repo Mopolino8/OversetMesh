@@ -56,5 +56,6 @@
         runTime.deltaT(),
         zeroGradientFvPatchScalarField::typeName
     );
+    oversetFvPatchScalarField::setCoupledFringe(rAU);
 
 #   include "writeOversetMasks.H"
