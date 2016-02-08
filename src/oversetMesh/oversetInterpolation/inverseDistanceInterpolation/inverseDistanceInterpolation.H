@@ -23,26 +23,23 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Class
-    injectionInterpolation
+    inverseDistanceInterpolation
 
 Description
-    Injection overset interpolation algorithm
-    For each acceptor, the donor data is extracted from the cell where
-    the donor centroid falls
-    Acceptor value is equal to the donor value, irrespective of the local
-    position
+    Inverse distance overset interpolation algorithm
+    For each acceptor, the value is interpolated based on inverse distance from
+    a set of donors (master donor and neighbouring donors).
 
 Author
-    Hrvoje Jasak, Wikki Ltd.  All rights reserved.
     Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
 
 SourceFiles
-    injectionInterpolation.C
+    inverseDistanceInterpolation.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef injectionInterpolation_H
-#define injectionInterpolation_H
+#ifndef inverseDistanceInterpolation_H
+#define inverseDistanceInterpolation_H
 
 #include "oversetInterpolation.H"
 
@@ -52,10 +49,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                     Class injectionInterpolation Declaration
+                     Class inverseDistanceInterpolation Declaration
 \*---------------------------------------------------------------------------*/
 
-class injectionInterpolation
+class inverseDistanceInterpolation
 :
     public oversetInterpolation
 {
@@ -82,10 +79,10 @@ class injectionInterpolation
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        injectionInterpolation(const injectionInterpolation&);
+        inverseDistanceInterpolation(const inverseDistanceInterpolation&);
 
         //- Disallow default bitwise assignment
-        void operator=(const injectionInterpolation&);
+        void operator=(const inverseDistanceInterpolation&);
 
 
         //- Calculate weights
@@ -98,13 +95,13 @@ class injectionInterpolation
 public:
 
     //- Runtime type information
-    TypeName("injection");
+    TypeName("inverseDistance");
 
 
     // Constructors
 
         //- Construct from dictionary
-        injectionInterpolation
+        inverseDistanceInterpolation
         (
             const oversetMesh& overset,
             const dictionary& dict
@@ -113,7 +110,7 @@ public:
 
     // Destructor
 
-        virtual ~injectionInterpolation();
+        virtual ~inverseDistanceInterpolation();
 
 
     // Member Functions

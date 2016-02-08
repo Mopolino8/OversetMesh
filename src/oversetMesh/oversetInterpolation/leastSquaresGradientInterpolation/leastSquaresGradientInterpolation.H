@@ -23,26 +23,23 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Class
-    injectionInterpolation
+    leastSquaresGradientInterpolation
 
 Description
-    Injection overset interpolation algorithm
-    For each acceptor, the donor data is extracted from the cell where
-    the donor centroid falls
-    Acceptor value is equal to the donor value, irrespective of the local
-    position
+    Least squares gradient overset interpolation aglorithm
+    For each acceptor, the value is extrapolated from master donor cell based on
+    least squares evaluation of a gradient using neighbouring donors.
 
 Author
-    Hrvoje Jasak, Wikki Ltd.  All rights reserved.
     Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
 
 SourceFiles
-    injectionInterpolation.C
+    leastSquaresGradientInterpolation.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef injectionInterpolation_H
-#define injectionInterpolation_H
+#ifndef leastSquaresGradientInterpolation_H
+#define leastSquaresGradientInterpolation_H
 
 #include "oversetInterpolation.H"
 
@@ -52,10 +49,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                     Class injectionInterpolation Declaration
+                     Class leastSquaresGradientInterpolation Declaration
 \*---------------------------------------------------------------------------*/
 
-class injectionInterpolation
+class leastSquaresGradientInterpolation
 :
     public oversetInterpolation
 {
@@ -82,10 +79,13 @@ class injectionInterpolation
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        injectionInterpolation(const injectionInterpolation&);
+        leastSquaresGradientInterpolation
+        (
+            const leastSquaresGradientInterpolation&
+        );
 
         //- Disallow default bitwise assignment
-        void operator=(const injectionInterpolation&);
+        void operator=(const leastSquaresGradientInterpolation&);
 
 
         //- Calculate weights
@@ -98,13 +98,13 @@ class injectionInterpolation
 public:
 
     //- Runtime type information
-    TypeName("injection");
+    TypeName("leastSquaresGradient");
 
 
     // Constructors
 
         //- Construct from dictionary
-        injectionInterpolation
+        leastSquaresGradientInterpolation
         (
             const oversetMesh& overset,
             const dictionary& dict
@@ -113,7 +113,7 @@ public:
 
     // Destructor
 
-        virtual ~injectionInterpolation();
+        virtual ~leastSquaresGradientInterpolation();
 
 
     // Member Functions

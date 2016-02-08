@@ -23,26 +23,23 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Class
-    injectionInterpolation
+    averageValueInterpolation
 
 Description
-    Injection overset interpolation algorithm
-    For each acceptor, the donor data is extracted from the cell where
-    the donor centroid falls
-    Acceptor value is equal to the donor value, irrespective of the local
-    position
+    Average value overset interpolation algorithm
+    For each acceptor, the value is calculated as the average value from a set
+    of donors (master donor and neighbouring donors).
 
 Author
-    Hrvoje Jasak, Wikki Ltd.  All rights reserved.
     Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
 
 SourceFiles
-    injectionInterpolation.C
+    averageValueInterpolation.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef injectionInterpolation_H
-#define injectionInterpolation_H
+#ifndef averageValueInterpolation_H
+#define averageValueInterpolation_H
 
 #include "oversetInterpolation.H"
 
@@ -52,10 +49,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                     Class injectionInterpolation Declaration
+                     Class averageValueInterpolation Declaration
 \*---------------------------------------------------------------------------*/
 
-class injectionInterpolation
+class averageValueInterpolation
 :
     public oversetInterpolation
 {
@@ -82,10 +79,10 @@ class injectionInterpolation
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        injectionInterpolation(const injectionInterpolation&);
+        averageValueInterpolation(const averageValueInterpolation&);
 
         //- Disallow default bitwise assignment
-        void operator=(const injectionInterpolation&);
+        void operator=(const averageValueInterpolation&);
 
 
         //- Calculate weights
@@ -98,13 +95,13 @@ class injectionInterpolation
 public:
 
     //- Runtime type information
-    TypeName("injection");
+    TypeName("averageValue");
 
 
     // Constructors
 
         //- Construct from dictionary
-        injectionInterpolation
+        averageValueInterpolation
         (
             const oversetMesh& overset,
             const dictionary& dict
@@ -113,7 +110,7 @@ public:
 
     // Destructor
 
-        virtual ~injectionInterpolation();
+        virtual ~averageValueInterpolation();
 
 
     // Member Functions

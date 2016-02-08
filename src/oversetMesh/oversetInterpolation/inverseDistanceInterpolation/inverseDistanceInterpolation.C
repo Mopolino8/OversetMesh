@@ -24,7 +24,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "injectionInterpolation.H"
+#include "inverseDistanceInterpolation.H"
 #include "oversetInterpolation.H"
 #include "oversetMesh.H"
 #include "addToRunTimeSelectionTable.H"
@@ -33,24 +33,24 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(injectionInterpolation, 0);
+    defineTypeNameAndDebug(inverseDistanceInterpolation, 0);
     addToRunTimeSelectionTable
     (
         oversetInterpolation,
-        injectionInterpolation,
+        inverseDistanceInterpolation,
         dictionary
     );
 }
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::injectionInterpolation::calcWeights() const
+void Foam::inverseDistanceInterpolation::calcWeights() const
 {
     if (localWeightsPtr_ || remoteWeightsPtr_)
     {
         FatalErrorIn
         (
-            "void injectionInterpolation::calcWeights() const"
+            "void inverseDistanceInterpolation::calcWeights() const"
         )   << "Weights already calculated."
             << abort(FatalError);
     }
@@ -62,6 +62,15 @@ void Foam::injectionInterpolation::calcWeights() const
     // bottom most list of weights - for all donors)
     const labelListList& lnd = overset().localNeighbouringDonors();
 
+    // Get local donor addressing (local acceptor index for each local donor)
+    const labelList& ldAddr = overset().localDonorAddr();
+
+    // Get local acceptors and donors
+    const labelList& acceptorCells = overset().acceptorCells();
+
+    // Get necessary mesh data
+    const vectorField& CC = overset().mesh().cellCentres();
+
     // Create a local weight field
     localWeightsPtr_ = new ScalarFieldField(ld.size());
     ScalarFieldField& localWeights = *localWeightsPtr_;
@@ -70,16 +79,37 @@ void Foam::injectionInterpolation::calcWeights() const
     forAll (ld, ldI)
     {
         // Set the size of this donor weight field (master donor (1) +
-        // neighbouring donors). Set the size and all values to zero.
+        // neighbouring donors). Set the size and all values to 1.
         localWeights.set
         (
             ldI,
-            new scalarField(1 + lnd[ldI].size(), 0)
+            new scalarField(1 + lnd[ldI].size(), 1)
         );
 
-        // Injection interpolation: set the first value to 1 (master donor
-        // contribution), others (neighbouring donors) are 0.
-        localWeights[ldI][0] = 1;
+        // Get acceptor cell centre
+        const vector& accCC = CC[acceptorCells[ldAddr[ldI]]];
+
+        // Inverse distance interpolation: weights are defined as inverted
+        // distance from a given donor to the acceptor cell centre
+
+        // Get reference to current weight field for this acceptor
+        scalarField& curLocWeights = localWeights[ldI];
+
+        // Calculate master donor first
+        curLocWeights[0] /= mag(accCC - CC[ld[ldI]]) + SMALL;
+
+        // Calculate neighbouring donors next
+        const labelList& curNbrDonors = lnd[ldI];
+        forAll (curNbrDonors, nbrI)
+        {
+            // Note nbrI + 1 index for subscripting because the first entry in
+            // weights corresponds to the master donor
+            curLocWeights[nbrI + 1] /=
+                mag(accCC - CC[curNbrDonors[nbrI]]) + SMALL;
+        }
+
+        // Renormalize the weight field
+        curLocWeights /= sum(curLocWeights);
     }
 
     // Handling remote donors for a parallel run
@@ -93,6 +123,10 @@ void Foam::injectionInterpolation::calcWeights() const
         remoteWeightsPtr_ = new ListScalarFieldField(Pstream::nProcs());
         ListScalarFieldField& remoteWeights = *remoteWeightsPtr_;
 
+        // Get the corresponding acceptor cell centres for remote donors on this
+        // processor
+        const vectorField& procRemAccCC = remoteAccCC()[Pstream::myProcNo()];
+
         // Set the size of the weight field for this processor
         ScalarFieldField& myProcRemoteWeights =
             remoteWeights[Pstream::myProcNo()];
@@ -102,16 +136,33 @@ void Foam::injectionInterpolation::calcWeights() const
         forAll (rd, rdI)
         {
             // Allocate the storage for this donor weight field (master donor
-            // (1) + neighbouring donors). Set the size and all values to zero.
+            // (1) + neighbouring donors). Set the size and all values to 1.
             myProcRemoteWeights.set
             (
                 rdI,
-                new scalarField(1 + rnd[rdI].size(), 0)
+                new scalarField(1 + rnd[rdI].size(), 1)
             );
 
-            // Injection interpolation: set the first value to 1 (master donor
-            // contribution), others (neighbouring donors) are 0.
-            myProcRemoteWeights[rdI][0] = 1;
+            // Get acceptor cell centre
+            const vector& accCC = procRemAccCC[rdI];
+
+            // Get reference to current weight field for this acceptor
+            scalarField& curRemWeights = myProcRemoteWeights[rdI];
+
+            // Calculate master donor first
+            curRemWeights[0] /= mag(accCC - CC[rd[rdI]]);
+
+            // Calculate neighbouring donors next
+            const labelList& curNbrDonors = rnd[rdI];
+            forAll (curNbrDonors, nbrI)
+            {
+                // Note nbrI + 1 index for subscripting because the first entry
+                // in weights corresponds to the master donor
+                curRemWeights[nbrI + 1] /= mag(accCC - CC[curNbrDonors[nbrI]]);
+            }
+
+            // Renormalize the weight field
+            curRemWeights /= sum(curRemWeights);
         }
 
         // Gather remote weights (no need to scatter since the data is needed
@@ -121,7 +172,7 @@ void Foam::injectionInterpolation::calcWeights() const
 }
 
 
-void Foam::injectionInterpolation::clearWeights() const
+void Foam::inverseDistanceInterpolation::clearWeights() const
 {
     deleteDemandDrivenData(localWeightsPtr_);
     deleteDemandDrivenData(remoteWeightsPtr_);
@@ -130,7 +181,7 @@ void Foam::injectionInterpolation::clearWeights() const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::injectionInterpolation::injectionInterpolation
+Foam::inverseDistanceInterpolation::inverseDistanceInterpolation
 (
     const oversetMesh& overset,
     const dictionary& dict
@@ -144,7 +195,7 @@ Foam::injectionInterpolation::injectionInterpolation
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::injectionInterpolation::~injectionInterpolation()
+Foam::inverseDistanceInterpolation::~inverseDistanceInterpolation()
 {
     clearWeights();
 }
@@ -153,7 +204,7 @@ Foam::injectionInterpolation::~injectionInterpolation()
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 const Foam::oversetInterpolation::ScalarFieldField&
-Foam::injectionInterpolation::localWeights() const
+Foam::inverseDistanceInterpolation::localWeights() const
 {
     if (!localWeightsPtr_)
     {
@@ -165,7 +216,7 @@ Foam::injectionInterpolation::localWeights() const
 
 
 const Foam::oversetInterpolation::ListScalarFieldField&
-Foam::injectionInterpolation::remoteWeights() const
+Foam::inverseDistanceInterpolation::remoteWeights() const
 {
     // We cannot calculate the remoteWeights using usual lazy evaluation
     // mechanism since the data only exists on the master processor. Add
@@ -175,7 +226,7 @@ Foam::injectionInterpolation::remoteWeights() const
         FatalErrorIn
         (
             "const oversetInterpolation::ListScalarFieldField&\n"
-            "injectionInterpolation::remoteWeights() const"
+            "inverseDistanceInterpolation::remoteWeights() const"
         )   << "Attempted to calculate remoteWeights for a serial run."
             << "This is not allowed."
             << abort(FatalError);
@@ -185,7 +236,7 @@ Foam::injectionInterpolation::remoteWeights() const
         FatalErrorIn
         (
             "const oversetInterpolation::ListScalarFieldField&\n"
-            "injectionInterpolation::remoteWeights() const"
+            "inverseDistanceInterpolation::remoteWeights() const"
         )   << "Attempted to calculate remoteWeights for a slave processor. "
             << "This is not allowed."
             << abort(FatalError);
@@ -195,7 +246,7 @@ Foam::injectionInterpolation::remoteWeights() const
         FatalErrorIn
         (
             "const oversetInterpolation::ListScalarFieldField&\n"
-            "injectionInterpolation::remoteWeights() const"
+            "inverseDistanceInterpolation::remoteWeights() const"
         )   << "Calculation of remoteWeights not possible because the data \n"
             << "exists only on the master processor. Please calculate \n"
             << "localWeights first (call .localWeights() member function)."
@@ -206,11 +257,14 @@ Foam::injectionInterpolation::remoteWeights() const
 }
 
 
-void Foam::injectionInterpolation::update() const
+void Foam::inverseDistanceInterpolation::update() const
 {
-    Info<< "injectionInterpolation::update()" << endl;
+    Info<< "inverseDistanceInterpolation::update()" << endl;
 
     clearWeights();
+
+    // Clear remote acceptor cell centres in the base class
+    oversetInterpolation::update();
 }
 
 
