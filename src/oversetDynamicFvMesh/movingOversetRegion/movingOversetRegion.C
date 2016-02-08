@@ -85,8 +85,8 @@ void Foam::movingOversetRegion::calcMotionMask() const
             }
         }
 
-        Info<< "movingOversetRegion " << name() << ": " << nMovingPoints
-            << " moving points"
+        Info<< "movingOversetRegion " << name() << ": "
+            << returnReduce(nMovingPoints, sumOp<scalar>()) << " moving points"
             << endl;
     }
 }

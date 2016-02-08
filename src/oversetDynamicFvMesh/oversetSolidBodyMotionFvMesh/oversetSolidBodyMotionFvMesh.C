@@ -79,7 +79,8 @@ Foam::oversetSolidBodyMotionFvMesh::oversetSolidBodyMotionFvMesh
             IOobject::MUST_READ,
             IOobject::NO_WRITE
         )
-    )
+    ),
+    curTimeIndex_(-1)
 {
     // Read motion function for all regions
     PtrList<entry> motionDicts(dynamicMeshCoeffs_.lookup("motionFunctions"));
@@ -112,15 +113,21 @@ Foam::oversetSolidBodyMotionFvMesh::~oversetSolidBodyMotionFvMesh()
 
 bool Foam::oversetSolidBodyMotionFvMesh::update()
 {
-    pointField newPoints = undisplacedPoints_;
-
-    forAll (motionRegions_, regionI)
+    // Move the mesh only once per time step as this is prescribed motion
+    if (curTimeIndex_ < this->time().timeIndex())
     {
-        newPoints +=
-            motionRegions_[regionI].motionIncrement(undisplacedPoints_);
-    }
+        pointField newPoints = undisplacedPoints_;
 
-    fvMesh::movePoints(newPoints);
+        forAll (motionRegions_, regionI)
+        {
+            newPoints +=
+                motionRegions_[regionI].motionIncrement(undisplacedPoints_);
+        }
+
+        fvMesh::movePoints(newPoints);
+
+        curTimeIndex_ = this->time().timeIndex();
+    }
 
     return false;
 }

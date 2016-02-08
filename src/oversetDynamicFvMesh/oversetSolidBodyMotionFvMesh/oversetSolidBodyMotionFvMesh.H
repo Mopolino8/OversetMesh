@@ -66,6 +66,12 @@ class oversetSolidBodyMotionFvMesh
         pointIOField undisplacedPoints_;
 
 
+        // Helper variables
+
+            //- Current time index
+            label curTimeIndex_;
+
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
