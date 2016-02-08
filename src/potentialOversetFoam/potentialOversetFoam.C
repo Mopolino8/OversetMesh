@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
     U.write();
     p.write();
     phi.write();
+    cellOversetMask.write();
 
     if (args.optionFound("writep"))
     {
