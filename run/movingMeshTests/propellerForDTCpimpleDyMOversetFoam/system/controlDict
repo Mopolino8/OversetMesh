@@ -1,0 +1,81 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     pimpleDyMOversetFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         0.37516; // Approx 10 periods
+
+deltaT          0.0001; // Approx 1 degree per time step
+
+writeControl    timeStep;
+
+writeInterval   10;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  10;
+
+writeCompression compressed;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep    no;
+maxAlphaCo        1;
+maxCo             1;
+
+libs
+(
+    "libfoam.so"
+    "libmeshTools.so"
+    "libsurfMesh.so"
+    "libsampling.so"
+    "libdynamicMesh.so"
+    "libdynamicFvMesh.so"
+    "liboversetMesh.so"
+    "liboversetDynamicFvMesh.so"
+);
+
+functions
+(
+    fullForces
+    {
+         type                forces;
+         functionObjectLibs  ( "libforces.so" );
+         outputControl       timeStep;
+         outputInterval      1;
+         patches             (propeller);
+         pName               p;
+         UName               U;
+         rhoName             rhoInf;
+         log                 true;
+         rhoInf              999.1;
+         CofR                (0.05 0 0);
+    }
+);
+
+// ************************************************************************* //

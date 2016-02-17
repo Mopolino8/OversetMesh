@@ -1,0 +1,83 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | OpenFOAM GUI Project: creativeFields           |
+|  \\    /   O peration     | Version:  0.8.9.0                              |
+|   \\  /    A nd           | Web: www.c-fields.com                          |
+|    \\/     M anipulation  |                                                |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+version	2;
+format	ascii;
+class	dictionary;
+location	"system";
+object	meshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+maxCellSize    0.006;
+
+surfaceFile    "propeller-full.stl";
+
+keepCellsIntersectingBoundary 0;
+
+localRefinement
+{
+    propeller
+    {
+        cellSize 0.001;
+    }
+    shaft
+    {
+        cellSize 0.004;
+    }
+    propellerFarfield
+    {
+        cellSize 0.002;
+    }
+}
+
+objectRefinements
+{
+}
+
+boundaryLayers
+{
+    patchBoundaryLayers
+    {
+//        propellerFarfield
+//        {
+//            nLayers 4;
+//            thicknessRatio 1;
+//            maxFirstLayerThickness 0.008;
+//            allowDiscontinuity 0;
+//        }
+        }
+    }
+}
+
+
+renameBoundary
+{
+    newPatchNames
+    {
+        propeller
+        {
+            newName propeller;
+            type wall;
+        }
+        shaft
+        {
+            newName shaft;
+            type wall;
+        }
+        propellerFarfield
+        {
+            newName propellerFarfield;
+            type patch;
+        }
+    }
+}
+// ************************************************************************* //

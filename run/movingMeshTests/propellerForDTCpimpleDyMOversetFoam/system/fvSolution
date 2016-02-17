@@ -1,0 +1,96 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    p
+    {
+        solver            BiCGStab;
+        preconditioner    Cholesky;
+        minIter           0;
+        maxIter           500;
+        tolerance         1e-7;
+        relTol            0.0;
+    }
+
+    U
+    {
+        solver            BiCGStab;
+        preconditioner    ILU0;
+
+        minIter           1;
+        maxIter           100;
+        tolerance         1e-8;
+        relTol            0.0;
+    }
+
+    k
+    {
+        solver            BiCGStab;
+        preconditioner    ILU0;
+
+        minIter           1;
+        maxIter           500;
+        tolerance         1e-8;
+        relTol            0.01;
+    }
+
+    omega
+    {
+        solver            BiCGStab;
+        preconditioner    ILU0;
+
+        minIter           1;
+        maxIter           500;
+        tolerance         1e-8;
+        relTol            0.01;
+    }
+
+    pFinal
+    {
+        solver            BiCGStab;
+        preconditioner    Cholesky;
+        minIter           0;
+        maxIter           1000;
+        tolerance         1e-9;
+        relTol            0.0;
+    }
+}
+
+
+PIMPLE
+{
+    pRefPoint (-1.35 -0.65 0);
+    pRefValue 0;
+
+    nNonOrthogonalCorrectors 0;
+    nOuterCorrectors         2;
+    nCorrectors              4;
+}
+
+
+relaxationFactors
+{
+    U            1;
+
+    k            0.5;
+    omega        0.5;
+
+    mesh         1;
+}
+
+
+// ************************************************************************* //

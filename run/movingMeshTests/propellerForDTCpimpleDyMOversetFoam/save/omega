@@ -1,0 +1,90 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      omega;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 -1 0 0 0 0];
+
+internalField   uniform 500;
+
+boundaryField
+{
+    overset
+    {
+        type             overset;
+        coupledFringe    yes;
+        setHoleCellValue no;
+        holeCellValue    500;
+        value            nonuniform 0();
+    }
+    shaft
+    {
+        type            omegaWallFunction;
+        refValue        uniform 0;
+        value           uniform 500;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.500;
+    }
+    shaftLong
+    {
+        type            omegaWallFunction;
+        refValue        uniform 0;
+        value           uniform 500;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.500;
+    }
+    propeller
+    {
+        type            omegaWallFunction;
+        refValue        uniform 0;
+        value           uniform 500;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.500;
+    }
+    propellerFarfield
+    {
+        type            emptyOverset;
+    } 
+    propellerHole
+    {
+        type            emptyOverset;
+    } 
+    inlet
+    {
+        type            fixedValue;
+        value           uniform 500;
+    }
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      uniform 500;
+        value           uniform 500;
+    }
+    farfield
+    {
+        type            inletOutlet;
+        inletValue      uniform 500;
+        value           uniform 500;
+    }
+}
+
+
+// ************************************************************************* //

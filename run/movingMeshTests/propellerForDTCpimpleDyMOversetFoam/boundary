@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "0.0001/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+9
+(
+    overset
+    {
+        type            overset;
+        nFaces          0;
+        startFace       3332899;
+    }
+    propeller
+    {
+        type            wall;
+        nFaces          85708;
+        startFace       3332899;
+    }
+    shaft
+    {
+        type            wall;
+        nFaces          1024;
+        startFace       3418607;
+    }
+    propellerFarfield
+    {
+        type            patch;
+        nFaces          51760;
+        startFace       3419631;
+    }
+    inlet
+    {
+        type            patch;
+        nFaces          6400;
+        startFace       3471391;
+    }
+    outlet
+    {
+        type            patch;
+        nFaces          7120;
+        startFace       3477791;
+    }
+    farfield
+    {
+        type            patch;
+        nFaces          9680;
+        startFace       3484911;
+    }
+    shaftLong
+    {
+        type            wall;
+        nFaces          2160;
+        startFace       3494591;
+    }
+    propellerHole
+    {
+        type            patch;
+        nFaces          10320;
+        startFace       3496751;
+    }
+)
+
+// ************************************************************************* //
