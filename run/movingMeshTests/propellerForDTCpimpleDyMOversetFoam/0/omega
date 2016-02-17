@@ -27,7 +27,7 @@ boundaryField
         coupledFringe    yes;
         setHoleCellValue no;
         holeCellValue    500;
-        value            nonuniform 0();
+        value            uniform 0;
     }
     shaft
     {
@@ -37,7 +37,7 @@ boundaryField
         Cmu             0.09;
         kappa           0.41;
         E               9.8;
-        beta1           0.500;
+        beta1           0.075;
     }
     shaftLong
     {
@@ -47,7 +47,7 @@ boundaryField
         Cmu             0.09;
         kappa           0.41;
         E               9.8;
-        beta1           0.500;
+        beta1           0.075;
     }
     propeller
     {
@@ -57,7 +57,7 @@ boundaryField
         Cmu             0.09;
         kappa           0.41;
         E               9.8;
-        beta1           0.500;
+        beta1           0.075;
     }
     propellerFarfield
     {

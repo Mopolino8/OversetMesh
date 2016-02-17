@@ -27,7 +27,7 @@ boundaryField
         coupledFringe    yes;
         setHoleCellValue no;
         holeCellValue    0.5;
-        value            nonuniform 0();
+        value            uniform 0;
     }
     shaft 
     {
