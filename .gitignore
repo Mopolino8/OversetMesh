@@ -45,6 +45,8 @@ linuxming*/
 SiCortex*Gcc*/
 solaris*Gcc*/
 SunOS*Gcc*/
+darwin*Gcc*/
+darwin*Icc*/
 
 # reinstate wmake/rules that might look like build folders
 !wmake/rules/*/
