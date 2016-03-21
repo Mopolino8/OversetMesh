@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
 #   include "createFields.H"
 #   include "readSIMPLEControls.H"
 
+#   include "writeOversetMasks.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< nl << "Calculating potential flow" << endl;
