@@ -37,26 +37,18 @@ regions
 
             donorSuitability
             {
-//                 type noSuitability;
-
                 type patchDistance;
                 masterRegionDistancePatches
                 (
-                    bottom
-                    top
-                    inlet
-                    outlet
-                    side_prt
-                    side_stb
+                    x_min x_max
+                    y_min y_max
+                    z_min z_max
                 );
                 donorRegionDistancePatches
                 (
-                    sail
-                    appendages
-                    nose
-                    mid
-                    tail
-                    suboff_fringe
+                    hull
+                    sailAll
+                    sternFins
                 );
                 threshold 0.5;
             }

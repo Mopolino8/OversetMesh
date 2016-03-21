@@ -8,7 +8,8 @@ cleanCase
 \rm -f .setSet
 \rm -rf 0/cellDist 0/cellDist.gz constant/cellDecomposition 
 \rm -rf *.vtk
-\rm -rf constant/polyMesh/
+\rm -rf constant/polyMesh-suboff
+\rm -rf constant/polyMesh
 mkdir constant/polyMesh
 \rm -rf 0 holeTri*
 cp -r save 0

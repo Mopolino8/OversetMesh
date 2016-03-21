@@ -16,7 +16,7 @@ gzip suboff-boxer-oversetSmall.msh
 cp -r constant/polyMesh constant/polyMesh-suboff
 
 # Merge meshes and clean up
-runApplication mergeMeshes .. suboffBoxerSmall . background
+runApplication mergeMeshes .. movingSuboffBoxerSmall . background
 \rm -rf constant/polyMesh
 \mv 1/polyMesh constant
 rm -rf 1

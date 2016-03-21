@@ -26,6 +26,16 @@ solvers
         tolerance        1e-7;
         relTol           0.01;
     }
+    pFinal
+    {
+        solver           BiCGStab;
+        preconditioner   DILU;
+
+        minIter          0;
+        maxIter          1000;
+        tolerance        1e-7;
+        relTol           0;
+    }
     U
     {
         solver           BiCGStab;
@@ -58,8 +68,10 @@ solvers
     }
 }
 
-SIMPLE
+PIMPLE
 {
+    nOuterCorrectors 4;
+    nCorrectors   4;
     pRefCell 0;
     pRefValue 0;
     nNonOrthogonalCorrectors 0;

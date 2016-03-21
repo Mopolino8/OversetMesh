@@ -17,7 +17,7 @@ FoamFile
 
 dimensions      [0 1 -1 0 0 0 0];
 
-internalField   uniform (1 0 0);
+internalField   uniform (0 0 0);
 
 boundaryField
 {
@@ -56,35 +56,33 @@ boundaryField
     }
     hull
     {
-        type            fixedValue;
+        type            movingWallVelocity;
         value           uniform (0 0 0);
     }
     sailAll
     {
-        type            fixedValue;
+        type            movingWallVelocity;
         value           uniform (0 0 0);
     }
     sternFins
     {
-        type            fixedValue;
+        type            movingWallVelocity;
         value           uniform (0 0 0);
     }
     inlet
     {
         type            fixedValue;
-        value           uniform (1 0 0);
+        value           uniform (0 0 0);
     }
     outlet
     {
-        type            inletOutlet;
-        inletValue      uniform (1 0 0);
-        value           uniform (1 0 0);
+        type            fixedValue;
+        value           uniform (0 0 0);
     }
     sides
     {
-        type            inletOutlet;
-        inletValue      uniform (1 0 0);
-        value           uniform (1 0 0);
+        type            fixedValue;
+        value           uniform (0 0 0);
     }
 }
 
