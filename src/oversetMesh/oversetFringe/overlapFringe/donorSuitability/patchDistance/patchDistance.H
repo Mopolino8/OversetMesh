@@ -53,7 +53,7 @@ namespace donorSuitability
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class patchDistance Declaration
+                       Class patchDistance Declaration
 \*---------------------------------------------------------------------------*/
 
 class patchDistance
