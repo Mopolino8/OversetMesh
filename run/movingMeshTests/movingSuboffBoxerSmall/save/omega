@@ -1,0 +1,102 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.1                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      omega;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 -1 0 0 0 0];
+
+internalField   uniform 100;
+
+boundaryField
+{
+    oversetFaces
+    {
+        type            overset;
+        coupledFringe   yes;
+        setHoleCellValue yes;
+        holeCellValue   100;
+        value           nonuniform 0();
+    }
+    x_min
+    {
+        type            zeroGradient;
+    }
+    x_max
+    {
+        type            zeroGradient;
+    }
+    y_min
+    {
+        type            zeroGradient;
+    }
+    y_max
+    {
+        type            zeroGradient;
+    }
+    z_min
+    {
+        type            zeroGradient;
+    }
+    z_max
+    {
+        type            zeroGradient;
+    }
+    hull
+    {
+        type            omegaWallFunction;
+        refValue        uniform 0;
+        value           uniform 100;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.075;
+    }
+    sailAll
+    {
+        type            omegaWallFunction;
+        refValue        uniform 0;
+        value           uniform 100;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.075;
+    }
+    sternFins
+    {
+        type            omegaWallFunction;
+        refValue        uniform 0;
+        value           uniform 100;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        beta1           0.075;
+    }
+    inlet
+    {
+        type            fixedValue;
+        value           uniform 100;
+    }
+    outlet
+    {
+        type            zeroGradient;
+    }
+    sides
+    {
+        type            zeroGradient;
+    }
+}
+
+
+// ************************************************************************* //
