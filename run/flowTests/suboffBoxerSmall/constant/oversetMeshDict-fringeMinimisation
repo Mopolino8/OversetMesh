@@ -31,13 +31,6 @@ regions
         // Donor regions
         donorRegions ( suboff );
 
-//         fringe
-//         {
-//             type manual;
-//             holes       "backHole";
-//             acceptors   "backFringe";
-//         }
-
         fringe
         {
             type overlap;
