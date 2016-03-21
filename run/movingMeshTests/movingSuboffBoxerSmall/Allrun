@@ -3,8 +3,7 @@
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # Get application name
-application1="potentialOversetFoam"
-application2="simpleOversetFoam"
+application="simpleOversetFoam"
 
 # Make background mesh
 (cd background ; blockMesh )
@@ -18,7 +17,7 @@ cp -r constant/polyMesh constant/polyMesh-suboff
 # Merge meshes and clean up
 runApplication mergeMeshes .. movingSuboffBoxerSmall . background
 \rm -rf constant/polyMesh
-\mv 1/polyMesh constant
+\mv 0.0001/polyMesh constant
 rm -rf 1
 \rm -f constant/polyMesh/pointZones constant/polyMesh/pointZones.gz constant/polyMesh/faceZones constant/polyMesh/faceZones.gz constant/polyMesh/cellZones constant/polyMesh/cellZones.gz
 
@@ -33,11 +32,9 @@ runApplication setsToZones
 \cp -f boundary constant/polyMesh/boundary
 
 # Run serial
-#runApplication $application1
 #runApplication $application2
 
 #runApplication decomposePar -cellDist
 #runApplication decomposeSets -writeEmptySets
-#runParallel $application1 3
-#runParallel $application2 3
+#runParallel $application 3
 

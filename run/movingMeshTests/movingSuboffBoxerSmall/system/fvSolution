@@ -70,7 +70,7 @@ solvers
 
 PIMPLE
 {
-    nOuterCorrectors 4;
+    nOuterCorrectors 2;
     nCorrectors   4;
     pRefCell 0;
     pRefValue 0;
