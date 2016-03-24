@@ -3,7 +3,7 @@
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # Get application name
-application="simpleOversetFoam"
+application="pimpleDyMOversetFoam"
 
 # Make background mesh
 (cd background ; blockMesh )
