@@ -37,7 +37,10 @@ regions
 
             donorSuitability
             {
+//                 type noSuitability;
+
                 type patchDistance;
+
                 masterRegionDistancePatches
                 (
                     x_min x_max

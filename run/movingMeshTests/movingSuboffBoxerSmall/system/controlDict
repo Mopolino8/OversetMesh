@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     simpleOversetFoam;
+application     pimpleDyMOversetFoam;
 
 startFrom       startTime;
 //startFrom       latestTime;
