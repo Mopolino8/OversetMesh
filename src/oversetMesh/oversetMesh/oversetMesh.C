@@ -56,6 +56,11 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
     ),
     regions_(),
     holePatchNames_(dict_.lookup("holePatches")),
+    singleUpdate_
+    (
+        dict_.lookupOrDefault<Switch>("singleUpdatePerTimeStep", false)
+    ),
+    curTimeIndex_(-1),
 
     acceptorCellsPtr_(NULL),
     donorCellsPtr_(NULL),
@@ -155,15 +160,30 @@ bool Foam::oversetMesh::movePoints() const
     // HJ, 3/Apr/2013
     Info<< "Overset mesh motion update" << endl;
 
-    forAll (regions_, regionI)
+    // Get time index
+    const label globalTimeIndex = mesh().time().timeIndex();
+
+    // Update regions, interpolation and clear out the address if the time local
+    // time index is smaller than global one
+    if (curTimeIndex_ < globalTimeIndex)
     {
-        regions_[regionI].update();
+        forAll (regions_, regionI)
+        {
+            regions_[regionI].update();
+        }
+
+        interpolationPtr_->update();
+
+        clearOut();
+
+        // Update the local time step only if singleUpdate switch is turned on.
+        // This update controls whether the overset addressing will be updated
+        // once per time step or multiple times per time step.
+        if (singleUpdate_)
+        {
+            curTimeIndex_ = globalTimeIndex;
+        }
     }
-
-    // Update interpolation (recalculate weights)
-    interpolationPtr_->update();
-
-    clearOut();
 
     return false;
 }

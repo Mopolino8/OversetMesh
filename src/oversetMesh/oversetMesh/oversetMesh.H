@@ -89,6 +89,16 @@ private:
         wordList holePatchNames_;
 
 
+        // Helper variables
+
+            //- Update overset addressing only the first time mesh changes
+            //  within a time step
+            Switch singleUpdate_;
+
+            //- Current time index
+            mutable label curTimeIndex_;
+
+
     // Demand-driven data
 
         // Cell classification
