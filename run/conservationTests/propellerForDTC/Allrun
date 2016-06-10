@@ -5,11 +5,14 @@
 # Get application name
 application="potentialDyMOversetFoam"
 
+# Create background mesh
+(cd backgroundMesh; ./Allrun)
+
 # Copy propeller mesh here
 \cp -rf propellerMesh/constant/polyMesh constant/
 
 # Merge meshes and clean up
-runApplication mergeMeshes .. propellerForDTC-conservationTest . backgroundMesh
+runApplication mergeMeshes .. propellerForDTC . backgroundMesh
 \rm -rf constant/polyMesh
 \mv 0.*/polyMesh constant
 \rm -rf 0.*
