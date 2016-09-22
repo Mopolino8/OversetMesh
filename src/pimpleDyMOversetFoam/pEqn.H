@@ -31,10 +31,22 @@
         om.correctNonOrthoFluxes(pEqn, U);
 
         pEqn.setReference(pRefCell, pRefValue);
-        pEqn.solve
+
+        if
         (
-            mesh.solutionDict().solver(p.select(pimple.finalInnerIter()))
-        );
+            (
+                pimple.corrPISO() == 1
+             || pimple.corrPISO() == pimple.nCorrPISO()
+            )
+         && pimple.finalNonOrthogonalIter()
+        )
+        {
+            pEqn.solve(mesh.solutionDict().solver("pFinal"));
+        }
+        else
+        {
+            pEqn.solve();
+        }
 
         if (pimple.finalNonOrthogonalIter())
         {

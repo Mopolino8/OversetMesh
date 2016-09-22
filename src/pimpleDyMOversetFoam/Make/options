@@ -6,7 +6,8 @@ EXE_INC = \
     -I$(LIB_SRC)/transportModels \
     -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
-    -I../oversetMesh/lnInclude
+    -I../oversetMesh/lnInclude \
+    -I../oversetDynamicFvMesh/lnInclude
 
 EXE_LIBS = \
     -ldynamicFvMesh \
@@ -20,4 +21,5 @@ EXE_LIBS = \
     -lfiniteVolume \
     -llduSolvers \
     -L$(MESQUITE_LIB_DIR) -lmesquite \
-    -L$(FOAM_USER_LIBBIN) -loversetMesh
+    -L$(FOAM_USER_LIBBIN) -loversetMesh \
+    -L$(FOAM_USER_LIBBIN) -loversetDynamicFvMesh
