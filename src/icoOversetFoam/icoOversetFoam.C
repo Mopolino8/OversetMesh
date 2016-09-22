@@ -35,6 +35,8 @@ Author
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
+#include "pisoControl.H"
+
 #include "oversetMesh.H"
 #include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
@@ -47,6 +49,9 @@ int main(int argc, char *argv[])
 #   include "setRootCase.H"
 #   include "createTime.H"
 #   include "createMesh.H"
+
+    pisoControl piso(mesh);
+
 #   include "createOversetMasks.H"
 #   include "createFields.H"
 #   include "initContinuityErrs.H"
@@ -59,9 +64,9 @@ int main(int argc, char *argv[])
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
-#       include "readPISOControls.H"
 #       include "oversetCourantNo.H"
 
+        // Momentum equation
         fvVectorMatrix UEqn
         (
             fvm::ddt(U)
@@ -69,11 +74,14 @@ int main(int argc, char *argv[])
           - fvm::laplacian(nu, U)
         );
 
-        solve(UEqn == -fvc::grad(p));
+        if (piso.momentumPredictor())
+        {
+            solve(UEqn == -fvc::grad(p));
+        }
 
         // --- PISO loop
 
-        for (int corr = 0; corr < nCorr; corr++)
+        while (piso.correct())
         {
             rAU = 1.0/UEqn.A();
             rAU.correctBoundaryConditions(); // Overset update
@@ -87,7 +95,7 @@ int main(int argc, char *argv[])
             oversetAdjustPhi(phi, U); // Fringe flux adjustment
             globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
-            for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+            while (piso.correctNonOrthogonal())
             {
                 fvScalarMatrix pEqn
                 (
@@ -98,9 +106,12 @@ int main(int argc, char *argv[])
                 om.correctNonOrthoFluxes(pEqn, U);
 
                 pEqn.setReference(pRefCell, pRefValue);
-                pEqn.solve();
+                pEqn.solve
+                (
+                    mesh.solutionDict().solver(p.select(piso.finalInnerIter()))
+                );
 
-                if (nonOrth == nNonOrthCorr)
+                if (piso.finalNonOrthogonalIter())
                 {
                     phi -= pEqn.flux();
                 }
