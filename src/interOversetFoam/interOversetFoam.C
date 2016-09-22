@@ -46,6 +46,7 @@ Author
 #include "interfaceProperties.H"
 #include "twoPhaseMixture.H"
 #include "turbulenceModel.H"
+#include "pimpleControl.H"
 
 #include "oversetMesh.H"
 #include "oversetFvPatchFields.H"
@@ -59,13 +60,15 @@ int main(int argc, char *argv[])
 #   include "setRootCase.H"
 #   include "createTime.H"
 #   include "createMesh.H"
+
+    pimpleControl pimple(mesh);
+
 #   include "readGravitationalAcceleration.H"
-#   include "readPIMPLEControls.H"
 #   include "initContinuityErrs.H"
 #   include "createFields.H"
 #   include "createOversetMasks.H"
-#   include "readTimeControls.H"
-    //#   include "correctPhi.H"
+#   include "createTimeControls.H"
+#   include "correctPhi.H"
 #   include "CourantNo.H"
 #   include "setInitialDeltaT.H"
 
@@ -75,7 +78,6 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
-#       include "readPIMPLEControls.H"
 #       include "readTimeControls.H"
 #       include "oversetCourantNo.H"
 #       include "setDeltaT.H"
@@ -85,8 +87,7 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         // Pressure-velocity corrector
-        int oCorr = 0;
-        do
+        while (pimple.loop())
         {
             twoPhaseProperties.correct();
 
@@ -95,22 +96,19 @@ int main(int argc, char *argv[])
 #           include "UEqn.H"
 
             // --- PISO loop
-            for (int corr = 0; corr < nCorr; corr++)
+            while (pimple.correct())
             {
 #               include "pdEqn.H"
             }
 
-#           include "continuityErrs.H"
+#           include "oversetContinuityErrs.H"
 
 #           include "limitU.H"
-
-            // Recalculate the mass fluxes
-            rhoPhi = phi*fvc::interpolate(rho);
 
             p = pd + cellOversetMask*rho*gh;
 
             turbulence->correct();
-        } while (++oCorr < nOuterCorr);
+        }
 
         runTime.write();
 

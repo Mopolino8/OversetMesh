@@ -35,6 +35,9 @@
     alpha1Eqn.relax();
     alpha1Eqn.solve();
 
+    // Update mass flux
+    rhoPhi = alpha1Eqn.flux()*(rho1 - rho2) + phi*rho2;
+
     Info<< "Liquid phase volume fraction = "
         << alpha1.weightedAverage(mesh.V()).value()
         << "  Min(alpha1) = " << min(cellOversetMask*alpha1).value()

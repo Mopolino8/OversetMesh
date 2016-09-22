@@ -15,16 +15,19 @@
 
     UEqn.relax();
 
-    solve
-    (
-        UEqn
-     ==
-        fvc::reconstruct
+    if (pimple.momentumPredictor())
+    {
+        solve
         (
+            UEqn
+         ==
+            fvc::reconstruct
             (
-                fvc::interpolate(interface.sigmaK())*fvc::snGrad(alpha1)
-              - ghf*fvc::snGrad(rho)
-              - fvc::snGrad(pd)
-            ) * mesh.magSf()
-        )
-    );
+                (
+                    fvc::interpolate(interface.sigmaK())*fvc::snGrad(alpha1)
+                  - ghf*fvc::snGrad(rho)
+                  - fvc::snGrad(pd)
+                ) * mesh.magSf()
+            )
+        );
+    }

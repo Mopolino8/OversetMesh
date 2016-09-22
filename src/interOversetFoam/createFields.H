@@ -103,13 +103,9 @@
 
     label pRefCell = 0;
     scalar pRefValue = 0.0;
-    setRefCell
-    (
-        pd,
-        mesh.solutionDict().subDict("PIMPLE"),
-        pRefCell,
-        pRefValue
-    );
+    setRefCell(pd, pimple.dict(), pRefCell, pRefValue);
+
+    mesh.schemesDict().setFluxRequired(pd.name());
 
     // Construct interface from alpha1 distribution
     interfaceProperties interface(alpha1, U, twoPhaseProperties);

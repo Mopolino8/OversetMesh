@@ -1,15 +1,12 @@
 {
-#   include "continuityErrs.H"
+    // Set flux required
+    mesh.schemesDict().setFluxRequired("pcorr");
 
-    wordList pcorrTypes
-    (
-        pd.boundaryField().size(),
-        zeroGradientFvPatchScalarField::typeName
-    );
+    wordList pcorrTypes(p.boundaryField().types());
 
-    for (label i=0; i<pd.boundaryField().size(); i++)
+    for (label i = 0; i < p.boundaryField().size(); i++)
     {
-        if (pd.boundaryField()[i].fixesValue())
+        if (p.boundaryField()[i].fixesValue())
         {
             pcorrTypes[i] = fixedValueFvPatchScalarField::typeName;
         }
@@ -26,31 +23,42 @@
             IOobject::NO_WRITE
         ),
         mesh,
-        dimensionedScalar("pcorr", pd.dimensions(), 0.0),
+        dimensionedScalar("pcorr", p.dimensions(), 0),
         pcorrTypes
     );
+    oversetFvPatchScalarField::setCoupledFringe(pcorr);
 
-    dimensionedScalar rUAf("(1|A(U))", dimTime/rho.dimensions(), 1.0);
+    // Initialise flux with interpolated velocity
+    phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
 
     // Adjust overset fluxes
-    oversetAdjustPhi(phi, U);
-    adjustPhi(phi, U, pcorr);
+    oversetAdjustPhi(phi, U); // Fringe flux adjustment
 
-    for(int nonOrth=0; nonOrth<=nNonOrthCorr; nonOrth++)
+    if (pcorr.needReference())
+    {
+        fvc::makeRelative(phi, U);
+        globalOversetAdjustPhi(phi, U, pcorr); // Global flux adjustment
+        fvc::makeAbsolute(phi, U);
+    }
+
+    while (pimple.correctNonOrthogonal())
     {
         fvScalarMatrix pcorrEqn
         (
-            fvm::laplacian(rUAf, pcorr) == fvc::div(phi)
+            fvm::laplacian(rAU, pcorr) == fvc::div(phi)
         );
 
-        pcorrEqn.setReference(pdRefCell, pdRefValue);
+        pcorrEqn.setReference(pRefCell, pRefValue);
         pcorrEqn.solve();
 
-        if (nonOrth == nNonOrthCorr)
+        if (pimple.finalNonOrthogonalIter())
         {
             phi -= pcorrEqn.flux();
         }
+
+        // Fluxes are corrected to absolute velocity and further corrected
+        // later.  HJ, 6/Feb/2009
     }
 
-#   include "continuityErrs.H"
+#   include "oversetContinuityErrs.H"
 }
