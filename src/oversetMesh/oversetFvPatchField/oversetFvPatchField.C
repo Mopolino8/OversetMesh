@@ -281,60 +281,74 @@ void oversetFvPatchField<Type>::correctOffDiag
         }
 
         // 4 Fringe faces
-        fringeUpperCoeffs_.setSize(fringeFaces.size(), 0);
-        fringeLowerCoeffs_.setSize(fringeFaces.size(), 0);
-
-        forAll (fringeFaces, fringeI)
+        // Note: fringe faces have to be killed and separately stored only when
+        // the implicit coupling is performed (coupledFringe_ = true)
+        if (coupledFringe_)
         {
-            const label curFace = fringeFaces[fringeI];
+            fringeUpperCoeffs_.setSize(fringeFaces.size(), 0);
+            fringeLowerCoeffs_.setSize(fringeFaces.size(), 0);
 
-            if (curFace < nInternalFaces)
+            forAll (fringeFaces, fringeI)
             {
-                // Internal face: kill the off-diagonal coefficient in
-                // the live cell
+                const label curFace = fringeFaces[fringeI];
 
-                // Since the matrix is symmetric, there is no need to
-                // distinguish between lower and upper coefficient
-                fringeUpperCoeffs_[fringeI] = upper[curFace];
-                fringeLowerCoeffs_[fringeI] = upper[curFace];
-
-                upper[curFace] = 0;
-            }
-            else
-            {
-                // Coupled boundary
-                const label patchI = boundaryMesh.whichPatch(curFace);
-
-                // First check if the patch is coupled
-                if (psi.boundaryField()[patchI].coupled())
+                if (curFace < nInternalFaces)
                 {
-                    // Copy boundary/internal coeffs into fringe upper/lower
+                    // Internal face: kill the off-diagonal coefficient in
+                    // the live cell
 
-                    // Note: on coupled boundaries, all coefficients are
-                    // identical. We can take the first component
-                    // HJ, 30/May/2013
+                    // Since the matrix is symmetric, there is no need to
+                    // distinguish between lower and upper coefficient
+                    fringeUpperCoeffs_[fringeI] = upper[curFace];
+                    fringeLowerCoeffs_[fringeI] = upper[curFace];
 
-                    const label patchFaceI =
-                        boundaryMesh[patchI].whichFace(curFace);
+                    upper[curFace] = 0;
+                }
+                else
+                {
+                    // Coupled boundary
+                    const label patchI = boundaryMesh.whichPatch(curFace);
 
-                    fringeUpperCoeffs_[fringeI] =
-                        component(eqn.boundaryCoeffs()[patchI][patchFaceI], 0);
-                    fringeLowerCoeffs_[fringeI] =
-                        component(eqn.internalCoeffs()[patchI][patchFaceI], 0);
-
-                    // Check if the acceptor is on this side
-                    // 1. If it is: kill corresponding internal/boundary coeffs
-                    // 2. If it isn't: do nothing, this is a live cell
-                    if (fringeFaceFlips[fringeI])
+                    // First check if the patch is coupled
+                    if (psi.boundaryField()[patchI].coupled())
                     {
-                        eqn.internalCoeffs()[patchI][patchFaceI] =
-                            pTraits<Type>::zero;
-                        eqn.boundaryCoeffs()[patchI][patchFaceI] =
-                            pTraits<Type>::zero;
+                        // Copy boundary/internal coeffs into fringe upper/lower
+
+                        // Note: on coupled boundaries, all coefficients are
+                        // identical. We can take the first component
+                        // HJ, 30/May/2013
+
+                        const label patchFaceI =
+                            boundaryMesh[patchI].whichFace(curFace);
+
+                        fringeUpperCoeffs_[fringeI] =
+                            component
+                            (
+                                eqn.boundaryCoeffs()[patchI][patchFaceI],
+                                0
+                            );
+                        fringeLowerCoeffs_[fringeI] =
+                            component
+                            (
+                                eqn.internalCoeffs()[patchI][patchFaceI],
+                                0
+                            );
+
+                        // Check if the acceptor is on this side
+                        // 1. If it is: kill corresponding internal/boundary
+                        //    coeffs
+                        // 2. If it isn't: do nothing, this is a live cell
+                        if (fringeFaceFlips[fringeI])
+                        {
+                            eqn.internalCoeffs()[patchI][patchFaceI] =
+                                pTraits<Type>::zero;
+                            eqn.boundaryCoeffs()[patchI][patchFaceI] =
+                                pTraits<Type>::zero;
+                        }
                     }
                 }
             }
-        }
+        } // end if for coupled fringe
     }
     else if (eqn.asymmetric())
     {
@@ -427,61 +441,75 @@ void oversetFvPatchField<Type>::correctOffDiag
         }
 
         // 4 Fringe faces
-        fringeUpperCoeffs_.setSize(fringeFaces.size(), 0);
-        fringeLowerCoeffs_.setSize(fringeFaces.size(), 0);
-
-        forAll (fringeFaces, fringeI)
+        // Note: fringe faces have to be killed and separately stored only when
+        // the implicit coupling is performed (coupledFringe_ = true)
+        if (coupledFringe_)
         {
-            const label curFace = fringeFaces[fringeI];
+            fringeUpperCoeffs_.setSize(fringeFaces.size(), 0);
+            fringeLowerCoeffs_.setSize(fringeFaces.size(), 0);
 
-            if (curFace < nInternalFaces)
+            forAll (fringeFaces, fringeI)
             {
-                // Internal face: kill the off-diagonal coefficient in
-                // the live cell
+                const label curFace = fringeFaces[fringeI];
 
-                // Since the matrix is asymmetric, lower and upper coefficients
-                // need to be distinguished
-                fringeUpperCoeffs_[fringeI] = upper[curFace];
-                fringeLowerCoeffs_[fringeI] = lower[curFace];
-
-                upper[curFace] = 0;
-                lower[curFace] = 0;
-            }
-            else
-            {
-                // Coupled boundary
-                const label patchI = boundaryMesh.whichPatch(curFace);
-
-                // First check if the patch is coupled
-                if (psi.boundaryField()[patchI].coupled())
+                if (curFace < nInternalFaces)
                 {
-                    // Copy boundary/internal coeffs into fringe upper/lower
+                    // Internal face: kill the off-diagonal coefficient in
+                    // the live cell
 
-                    // Note: on coupled boundaries, all coefficients are
-                    // identical. We can take the first component
-                    // HJ, 30/May/2013
+                    // Since the matrix is asymmetric, lower and upper
+                    // coefficients need to be distinguished
+                    fringeUpperCoeffs_[fringeI] = upper[curFace];
+                    fringeLowerCoeffs_[fringeI] = lower[curFace];
 
-                    const label patchFaceI =
-                        boundaryMesh[patchI].whichFace(curFace);
+                    upper[curFace] = 0;
+                    lower[curFace] = 0;
+                }
+                else
+                {
+                    // Coupled boundary
+                    const label patchI = boundaryMesh.whichPatch(curFace);
 
-                    fringeUpperCoeffs_[fringeI] =
-                        component(eqn.boundaryCoeffs()[patchI][patchFaceI], 0);
-                    fringeLowerCoeffs_[fringeI] =
-                        component(eqn.internalCoeffs()[patchI][patchFaceI], 0);
-
-                    // Check if the acceptor is on this side
-                    // 1. If it is: kill corresponding internal/boundary coeffs
-                    // 2. If it isn't: do nothing, this is a live cell
-                    if (fringeFaceFlips[fringeI])
+                    // First check if the patch is coupled
+                    if (psi.boundaryField()[patchI].coupled())
                     {
-                        eqn.internalCoeffs()[patchI][patchFaceI] =
-                            pTraits<Type>::zero;
-                        eqn.boundaryCoeffs()[patchI][patchFaceI] =
-                            pTraits<Type>::zero;
+                        // Copy boundary/internal coeffs into fringe upper/lower
+
+                        // Note: on coupled boundaries, all coefficients are
+                        // identical. We can take the first component
+                        // HJ, 30/May/2013
+
+                        const label patchFaceI =
+                            boundaryMesh[patchI].whichFace(curFace);
+
+                        fringeUpperCoeffs_[fringeI] =
+                            component
+                            (
+                                eqn.boundaryCoeffs()[patchI][patchFaceI],
+                                0
+                            );
+                        fringeLowerCoeffs_[fringeI] =
+                            component
+                            (
+                                eqn.internalCoeffs()[patchI][patchFaceI],
+                                0
+                            );
+
+                        // Check if the acceptor is on this side
+                        // 1. If it is: kill corresponding internal/boundary
+                        //    coeffs
+                        // 2. If it isn't: do nothing, this is a live cell
+                        if (fringeFaceFlips[fringeI])
+                        {
+                            eqn.internalCoeffs()[patchI][patchFaceI] =
+                                pTraits<Type>::zero;
+                            eqn.boundaryCoeffs()[patchI][patchFaceI] =
+                                pTraits<Type>::zero;
+                        }
                     }
                 }
             }
-        }
+        } // end if for coupled fringe
     }
 }
 
@@ -820,10 +848,18 @@ void oversetFvPatchField<Type>::initEvaluate
         this->updateCoeffs();
     }
 
-    // Note: do not set acceptor values if the conservative correction had been
-    // used during the solution process. VV, 25/Jan/2015.
+    // Note that the acceptor cells should not be updated when:
+    // 1. The fringe is not coupled (i.e. explicit update) because this update
+    //    is called at the end of fvMatrix::solve and would mess up the equation
+    //    fluxes (e.g. pdEqn.flux() would not yield fully conservative flux)
+    // 2. The fringe is coupled and the conservative correction had been used
+    //    during the solution process. This would also mess up the equation
+    //    fluxes.
     if (coupledFringe_ && !conservativeCorrection_)
     {
+        Info<< "Explicitly correcting fringe values for field: "
+            << this->dimensionedInternalField().name() << endl;
+
         // Get non-constant access to internal field
         Field<Type>& psi = const_cast<Field<Type>&>(this->internalField());
 
@@ -855,6 +891,23 @@ void oversetFvPatchField<Type>::manipulateMatrix
     fvMatrix<Type>& eqn
 )
 {
+    // If the fringe is not coupled, set values in acceptor cells first and do
+    // not perform overset interpolation during the solution process
+    if (!coupledFringe_)
+    {
+        Info<< "Setting values in acceptor cells before the solution for "
+            << "field: " << eqn.psi().name() << endl;
+
+        // Get acceptor values by interpolation
+        Field<Type> accValues =
+            oversetPatch_.overset().interpolate(eqn.psi());
+
+        // Ger acceptor addressing
+        const labelList& accCells = oversetPatch_.overset().acceptorCells();
+
+        eqn.setValues(accCells, accValues);
+    }
+
     // Eliminate unnecesary off-diagonal coefficients
     this->correctOffDiag(eqn);
 
@@ -1004,25 +1057,10 @@ void oversetFvPatchField<Type>::initInterfaceMatrixUpdate
             result[curCell] = -diag[curCell]*psi[curCell];
         }
     }
-    else
-    {
-        FatalErrorIn
-        (
-            "void oversetFvPatchField<Type>::updateInterfaceMatrix\n"
-            "(\n"
-            "    const scalarField& psiInternal,\n"
-            "    scalarField& result,\n"
-            "    const lduMatrix&,\n"
-            "    const scalarField& coeffs,\n"
-            "    const direction cmpt,\n"
-            "    const Pstream::commsTypes commsType\n"
-            ") const"
-        )   << "Attempting implicit update for field "
-            << this->dimensionedInternalField().name()
-            << " on patch " << this->patch().name()
-            << " with coupledFringe switched off"
-            << abort(FatalError);
-    }
+    // else
+    // Fringe is explicit (coupledFringe_ = false) and the acceptor cells are
+    // treated as fixedValue which have been set via overset interpolation in
+    // manipulateMatrix
 }
 
 
@@ -1047,69 +1085,73 @@ void oversetFvPatchField<Type>::patchFlux
     const fvMatrix<Type>& matrix
 ) const
 {
-    // Get necessary references
-    const oversetMesh& om = oversetPatch_.overset();
-    const polyBoundaryMesh& boundaryMesh = om.mesh().boundaryMesh();
-
-    // Cast away constness of the fvMatrix (we need to change fringe face
-    // coefficients for coupled boundaries)
-    fvMatrix<Type>& eqn = const_cast<fvMatrix<Type>&>(matrix);
-
-    // Get addressing
-    const unallocLabelList& own = matrix.lduAddr().lowerAddr();
-    const unallocLabelList& nei = matrix.lduAddr().upperAddr();
-    const label nInternalFaces = nei.size();
-
-    // Get fringe addressing
-    const labelList& fringeFaces = om.fringeFaces();
-    const boolList& fringeFaceFlips = om.fringeFaceFlips();
-
-    // Get fields
-    const GeometricField<Type, fvPatchField, volMesh>& psi = matrix.psi();
-    const Field<Type>& psiIn = psi.internalField();
-    Field<Type>& fluxIn = pFlux.internalField();
-
-    // Note that fringe corrects coefficients on internal faces
-    forAll (fringeFaces, fringeI)
+    // Patch flux is calculated accurately if the coupledFringe_ is off
+    if (coupledFringe_)
     {
+        // Get necessary references
+        const oversetMesh& om = oversetPatch_.overset();
+        const polyBoundaryMesh& boundaryMesh = om.mesh().boundaryMesh();
+
+        // Cast away constness of the fvMatrix (we need to change fringe face
+        // coefficients for coupled boundaries)
+        fvMatrix<Type>& eqn = const_cast<fvMatrix<Type>&>(matrix);
+
         // Get addressing
-        const label& faceI = fringeFaces[fringeI];
+        const unallocLabelList& own = matrix.lduAddr().lowerAddr();
+        const unallocLabelList& nei = matrix.lduAddr().upperAddr();
+        const label nInternalFaces = nei.size();
 
-        // Multiplication is only done for internal fringe faces. Live/acceptors
-        // cells having fringe faces on coupled boundaries are correctly taken
-        // into account via internal/boundary coeffs on corresponding processor
-        // boundary(see below).
-        if (faceI < nInternalFaces)
+        // Get fringe addressing
+        const labelList& fringeFaces = om.fringeFaces();
+        const boolList& fringeFaceFlips = om.fringeFaceFlips();
+
+        // Get fields
+        const GeometricField<Type, fvPatchField, volMesh>& psi = matrix.psi();
+        const Field<Type>& psiIn = psi.internalField();
+        Field<Type>& fluxIn = pFlux.internalField();
+
+        // Note that fringe corrects coefficients on internal faces
+        forAll (fringeFaces, fringeI)
         {
-            fluxIn[faceI] = fringeUpperCoeffs_[fringeI]*psiIn[nei[faceI]]
-                - fringeLowerCoeffs_[fringeI]*psiIn[own[faceI]];
-        }
-        else
-        {
-            // Coupled boundary treatment:
-            // Rebuild internal/boundary coefficients from fringe lower/upper
-            // coefficients for consistent calculation of fringe face fluxes on
-            // coupled boundaries. This implies that the overset patch must come
-            // before processor patches in boundary field - this check is
-            // performed in oversetMesh::oversetMesh. VV, 25/Jan/2015.
+            // Get addressing
+            const label& faceI = fringeFaces[fringeI];
 
-            const label patchI = boundaryMesh.whichPatch(faceI);
-
-            // First check if the patch is coupled
-            if (psi.boundaryField()[patchI].coupled())
+            // Multiplication is only done for internal fringe faces. Live/acceptors
+            // cells having fringe faces on coupled boundaries are correctly taken
+            // into account via internal/boundary coeffs on corresponding processor
+            // boundary(see below).
+            if (faceI < nInternalFaces)
             {
-                // Restore boundary/internal coeffs from fringe upper/lower if
-                // the acceptor is on this side. If it isn't, boundary/internal
-                // coefficients are correct - there's nothing to do.
-                if (fringeFaceFlips[fringeI])
-                {
-                    const label patchFaceI =
-                        boundaryMesh[patchI].whichFace(faceI);
+                fluxIn[faceI] = fringeUpperCoeffs_[fringeI]*psiIn[nei[faceI]]
+                    - fringeLowerCoeffs_[fringeI]*psiIn[own[faceI]];
+            }
+            else
+            {
+                // Coupled boundary treatment:
+                // Rebuild internal/boundary coefficients from fringe lower/upper
+                // coefficients for consistent calculation of fringe face fluxes on
+                // coupled boundaries. This implies that the overset patch must come
+                // before processor patches in boundary field - this check is
+                // performed in oversetMesh::oversetMesh. VV, 25/Jan/2015.
 
-                    eqn.internalCoeffs()[patchI][patchFaceI] =
-                        pTraits<Type>::one*fringeLowerCoeffs_[fringeI];
-                    eqn.boundaryCoeffs()[patchI][patchFaceI] =
-                        pTraits<Type>::one*fringeUpperCoeffs_[fringeI];
+                const label patchI = boundaryMesh.whichPatch(faceI);
+
+                // First check if the patch is coupled
+                if (psi.boundaryField()[patchI].coupled())
+                {
+                    // Restore boundary/internal coeffs from fringe upper/lower if
+                    // the acceptor is on this side. If it isn't, boundary/internal
+                    // coefficients are correct - there's nothing to do.
+                    if (fringeFaceFlips[fringeI])
+                    {
+                        const label patchFaceI =
+                            boundaryMesh[patchI].whichFace(faceI);
+
+                        eqn.internalCoeffs()[patchI][patchFaceI] =
+                            pTraits<Type>::one*fringeLowerCoeffs_[fringeI];
+                        eqn.boundaryCoeffs()[patchI][patchFaceI] =
+                            pTraits<Type>::one*fringeUpperCoeffs_[fringeI];
+                    }
                 }
             }
         }
