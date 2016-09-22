@@ -34,6 +34,8 @@ Author
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
+#include "simpleControl.H"
+
 #include "oversetMesh.H"
 #include "oversetAdjustPhi.H"
 #include "globalOversetAdjustPhi.H"
@@ -42,22 +44,25 @@ Author
 
 int main(int argc, char *argv[])
 {
+    argList::validOptions.insert("resetU", "");
     argList::validOptions.insert("writep", "");
 
 #   include "setRootCase.H"
 
 #   include "createTime.H"
 #   include "createMesh.H"
+
+    simpleControl simple(mesh);
+
 #   include "createOversetMasks.H"
 #   include "createFields.H"
-#   include "readSIMPLEControls.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< nl << "Calculating potential flow" << endl;
 
     // Do correctors over the complete set
-    for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+    while (simple.correctNonOrthogonal())
     {
         phi = faceOversetMask*(linearInterpolate(U) & mesh.Sf());
 
@@ -103,7 +108,7 @@ int main(int argc, char *argv[])
         );
         divFlux.write();
 
-        if (nonOrth != nNonOrthCorr)
+        if (!simple.finalNonOrthogonalIter())
         {
             p.relax();
         }
