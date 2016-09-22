@@ -35,6 +35,8 @@ Author
 
 #include "fvCFD.H"
 #include "dynamicFvMesh.H"
+#include "pisoControl.H"
+
 #include "oversetMesh.H"
 #include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
@@ -44,9 +46,14 @@ Author
 
 int main(int argc, char *argv[])
 {
+    argList::validOptions.insert("reconstructU", "");
+
 #   include "setRootCase.H"
 #   include "createTime.H"
 #   include "createDynamicFvMesh.H"
+
+    pisoControl piso(mesh);
+
 #   include "createFields.H"
 #   include "initTotalVolume.H"
 #   include "initContinuityErrs.H"
@@ -57,7 +64,6 @@ int main(int argc, char *argv[])
 
     while (runTime.loop())
     {
-#       include "readPISOControls.H"
 #       include "checkTotalVolume.H"
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
@@ -82,7 +88,7 @@ int main(int argc, char *argv[])
         oversetAdjustPhi(phi, U); // Fringe flux adjustment
         globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
-        for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+        while (piso.correctNonOrthogonal())
         {
             p.storePrevIter();
 
@@ -112,23 +118,25 @@ int main(int argc, char *argv[])
             pEqn.setReference(pRefCell, pRefValue);
             pEqn.solve();
 
-            if (nonOrth != nNonOrthCorr)
-            {
-                p.relax();
-            }
-            else
+            if (piso.finalNonOrthogonalIter())
             {
                 phi -= pEqn.flux();
 #               include "oversetContinuityErrs.H"
+            }
+            else
+            {
+                p.relax();
             }
         }
 
         // Update div phi field for visualisation purposes
         oversetDivPhi = cellOversetMask*fvc::div(phi);
 
-        // Note: do not reconstruct the velocity field for next time step
-//        U = fvc::reconstruct(phi);
-//        U.correctBoundaryConditions();
+        if (args.optionFound("reconstructU"))
+        {
+            U = fvc::reconstruct(phi);
+            U.correctBoundaryConditions();
+        }
 
         Info<< "Interpolated U error = "
             << (
