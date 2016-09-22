@@ -1,11 +1,5 @@
 {
-#   include "continuityErrs.H"
-
-    wordList pcorrTypes
-    (
-        p.boundaryField().size(),
-        zeroGradientFvPatchScalarField::typeName
-    );
+    wordList pcorrTypes(p.boundaryField().types());
 
     for (label i = 0; i < p.boundaryField().size(); i++)
     {
@@ -35,10 +29,16 @@
     phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
 
     // Adjust overset fluxes
-    oversetAdjustPhi(phi, U);
-    adjustPhi(phi, U, pcorr);
+    oversetAdjustPhi(phi, U); // Fringe flux adjustment
 
-    for(int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+    if (pcorr.needReference())
+    {
+        fvc::makeRelative(phi, U);
+        globalOversetAdjustPhi(phi, U, pcorr); // Global flux adjustment
+        fvc::makeAbsolute(phi, U);
+    }
+
+    while (pimple.correctNonOrthogonal())
     {
         fvScalarMatrix pcorrEqn
         (
@@ -48,7 +48,7 @@
         pcorrEqn.setReference(pRefCell, pRefValue);
         pcorrEqn.solve();
 
-        if (nonOrth == nNonOrthCorr)
+        if (pimple.finalNonOrthogonalIter())
         {
             phi -= pcorrEqn.flux();
         }

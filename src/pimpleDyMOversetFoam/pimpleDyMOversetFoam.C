@@ -37,6 +37,8 @@ Description
 #include "singlePhaseTransportModel.H"
 #include "turbulenceModel.H"
 #include "dynamicFvMesh.H"
+#include "pimpleControl.H"
+
 #include "oversetMesh.H"
 #include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
@@ -50,10 +52,12 @@ int main(int argc, char *argv[])
 
 #   include "createTime.H"
 #   include "createDynamicFvMesh.H"
-#   include "readPIMPLEControls.H"
+
+    pimpleControl pimple(mesh);
+
 #   include "initContinuityErrs.H"
+#   include "createControls.H"
 #   include "createFields.H"
-#   include "readTimeControls.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -96,91 +100,18 @@ int main(int argc, char *argv[])
 #       include "setDeltaT.H"
 
         // --- PIMPLE loop
-        label oCorr = 0;
-        do
+        while (pimple.loop())
         {
-            if (nOuterCorr != 1)
-            {
-                p.storePrevIter();
-            }
-
 #           include "UEqn.H"
 
             // --- PISO loop
-            for (int corr = 0; corr < nCorr; corr++)
+            while (pimple.correct())
             {
-                rAU = 1.0/UEqn.A();
-                rAU.correctBoundaryConditions(); // Overset update
-                surfaceScalarField rAUf = fvc::interpolate(rAU);
-
-                U = rAU*UEqn.H();
-                U.correctBoundaryConditions(); // Overset update
-
-                surfaceScalarField phiU
-                (
-                    "phiU",
-                    fvc::interpolate(U) & mesh.Sf()
-                );
-
-                phi = phiU;
-
-                // Adjust overset fluxes
-                oversetAdjustPhi(phi, U); // Fringe flux adjustment
-                globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
-
-                for (int nonOrth=0; nonOrth<=nNonOrthCorr; nonOrth++)
-                {
-                    fvScalarMatrix pEqn
-                    (
-                        fvm::laplacian(rAUf, p) == fvc::div(phi)
-                    );
-
-                    // Adjust non-orthogonal fringe fluxes if necessary
-                    om.correctNonOrthoFluxes(pEqn, U);
-
-                    pEqn.setReference(pRefCell, pRefValue);
-
-                    if
-                    (
-                        corr == nCorr - 1
-                     && nonOrth == nNonOrthCorr
-                    )
-                    {
-                        pEqn.solve
-                        (
-                            mesh.solutionDict().solver(p.name() + "Final")
-                        );
-                    }
-                    else
-                    {
-                        pEqn.solve(mesh.solutionDict().solver(p.name()));
-                    }
-
-                    if (nonOrth == nNonOrthCorr)
-                    {
-                        phi -= pEqn.flux();
-                    }
-                }
-
-#               include "oversetContinuityErrs.H"
-
-                // Explicitly relax pressure for momentum corrector
-                if (oCorr != nOuterCorr - 1)
-                {
-                    p.relax();
-                }
-
-#               include "movingMeshContinuityErrs.H"
-
-                U += rAU*fvc::reconstruct((phi - phiU)/rAUf);
-                U.correctBoundaryConditions();
-
-                // Make the fluxes relative to the mesh motion
-                fvc::makeRelative(phi, U);
+#               include "pEqn.H"
             }
 
             turbulence->correct();
-        } while (++oCorr < nOuterCorr);
+        }
 
         runTime.write();
 
