@@ -40,6 +40,7 @@ Author
 #include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
 #include "globalOversetAdjustPhi.H"
+#include "pisoControl.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -48,43 +49,56 @@ int main(int argc, char *argv[])
 #   include "setRootCase.H"
 #   include "createTime.H"
 #   include "createDynamicFvMesh.H"
-#   include "createFields.H"
+
+    pisoControl piso(mesh);
+
 #   include "initContinuityErrs.H"
+#   include "initTotalVolume.H"
+#   include "createControls.H"
+#   include "createFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< "\nStarting time loop\n" << endl;
 
-    while (runTime.loop())
+    while (runTime.run())
     {
-        Info<< "Time = " << runTime.timeName() << nl << endl;
+#       include "readControls.H"
+#       include "checkTotalVolume.H"
 
         // Make the fluxes absolute
         fvc::makeAbsolute(phi, U);
+
+        runTime++;
+
+        Info<< "Time = " << runTime.timeName() << nl << endl;
 
         bool meshChanged = mesh.update();
         reduce(meshChanged, orOp<bool>());
 
 #       include "createOversetMasks.H"
 
+        if (correctPhi && (mesh.moving() || meshChanged))
+        {
+#           include "correctPhi.H"
+        }
+
         // Make the fluxes relative to the mesh motion
         fvc::makeRelative(phi, U);
 
-#       include "readPISOControls.H"
 #       include "oversetCourantNo.H"
+#       include "setDeltaT.H"
 
-        fvVectorMatrix UEqn
-        (
-            fvm::ddt(U)
-          + fvm::div(phi, U)
-          - fvm::laplacian(nu, U)
-        );
+        if (mesh.moving() && checkMeshCourantNo)
+        {
+#           include "meshCourantNo.H"
+        }
 
-        solve(UEqn == -fvc::grad(p));
+#       include "UEqn.H"
 
         // --- PISO loop
 
-        for (int corr = 0; corr < nCorr; corr++)
+        while (piso.correct())
         {
             rAU = 1.0/UEqn.A();
             rAU.correctBoundaryConditions(); // Overset update
@@ -98,7 +112,7 @@ int main(int argc, char *argv[])
             oversetAdjustPhi(phi, U); // Fringe flux adjustment
             globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
-            for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+            while (piso.correctNonOrthogonal())
             {
                 fvScalarMatrix pEqn
                 (
@@ -109,9 +123,12 @@ int main(int argc, char *argv[])
                 om.correctNonOrthoFluxes(pEqn, U);
 
                 pEqn.setReference(pRefCell, pRefValue);
-                pEqn.solve();
+                pEqn.solve
+                (
+                    mesh.solutionDict().solver(p.select(piso.finalInnerIter()))
+                );
 
-                if (nonOrth == nNonOrthCorr)
+                if (piso.finalNonOrthogonalIter())
                 {
                     phi -= pEqn.flux();
                 }
