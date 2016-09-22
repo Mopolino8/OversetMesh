@@ -1,3 +1,5 @@
+    p.boundaryField().updateCoeffs();
+
     rAU = 1.0/UEqn().A();
     rAU.correctBoundaryConditions(); // Overset update
 
@@ -12,7 +14,7 @@
     globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
     // Non-orthogonal pressure corrector loop
-    for (int nonOrth = 0; nonOrth <= nNonOrthCorr; nonOrth++)
+    while (simple.correctNonOrthogonal())
     {
         fvScalarMatrix pEqn
         (
@@ -25,17 +27,9 @@
         pEqn.setReference(pRefCell, pRefValue);
 
         // Retain the residual from the first iteration
-        if (nonOrth == 0)
-        {
-            eqnResidual = pEqn.solve().initialResidual();
-            maxResidual = max(eqnResidual, maxResidual);
-        }
-        else
-        {
-            pEqn.solve();
-        }
+        pEqn.solve();
 
-        if (nonOrth == nNonOrthCorr)
+        if (simple.finalNonOrthogonalIter())
         {
             phi -= pEqn.flux();
         }
@@ -49,4 +43,3 @@
     // Momentum corrector
     U -= rAU*fvc::grad(p);
     U.correctBoundaryConditions();
-
