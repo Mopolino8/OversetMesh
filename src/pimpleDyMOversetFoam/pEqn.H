@@ -34,10 +34,7 @@
 
         if
         (
-            (
-                pimple.corrPISO() == 1
-             || pimple.corrPISO() == pimple.nCorrPISO()
-            )
+            pimple.corrPISO() == pimple.nCorrPISO()
          && pimple.finalNonOrthogonalIter()
         )
         {
