@@ -106,7 +106,7 @@ bool Foam::globalOversetAdjustPhi
         }
 
 
-        //HR 16.03.10: Bug fix for moving meshes. Changing domain volume needs
+        // HR 16.03.10: Bug fix for moving meshes. Changing domain volume needs
         // to be taken into account.
         if (phi.mesh().moving())
         {
