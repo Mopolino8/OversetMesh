@@ -39,5 +39,6 @@ oversetFvsPatchField/oversetFvsPatchFields.C
 
 oversetAdjustPhi/oversetAdjustPhi.C
 oversetAdjustPhi/globalOversetAdjustPhi.C
+oversetAdjustPhi/regionWiseOversetAdjustPhi.C
 
 LIB = $(FOAM_USER_LIBBIN)/liboversetMesh
