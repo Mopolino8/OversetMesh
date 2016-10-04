@@ -216,6 +216,13 @@ public:
             const bool coupled = true
         );
 
+        //- Force the interpolation of the field, irrespective whether the
+        //  coupledFringe and conservativeCorrection is specified or not
+        static void oversetInterpolate
+        (
+            GeometricField<Type, fvPatchField, volMesh>& psi
+        );
+
 
     // Member functions
 
@@ -227,6 +234,12 @@ public:
                 return coupledFringe_;
             }
 
+            //- Return true if the conservative correction is specified
+            bool conservativeCorrection() const
+            {
+                return conservativeCorrection_;
+            }
+
             //- Return neighbour field.  Dummy
             virtual tmp<Field<Type> > patchNeighbourField() const;
 
@@ -234,6 +247,12 @@ public:
             void setCoupledFringe(const bool coupled)
             {
                 coupledFringe_ = coupled;
+            }
+
+            //- Set conservativeCorrection to true or false
+            void setConservativeCorrection(const bool conservative)
+            {
+                conservativeCorrection_ = conservative;
             }
 
 

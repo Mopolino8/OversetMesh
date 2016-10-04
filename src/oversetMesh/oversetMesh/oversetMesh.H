@@ -437,6 +437,17 @@ public:
                 const volVectorField& U
             ) const;
 
+            //- Set overset reference cell. This function is needed in order to
+            //  correctly handle explicit fringe algorithm, where reference cell
+            //  should never be supplied
+            void setRefCell
+            (
+                const volScalarField& field,
+                const dictionary& dict,
+                label& refCelli,
+                scalar& refValue
+            ) const;
+
 
         // Mesh object update functions
 

@@ -29,6 +29,7 @@ License
 #include "volFields.H"
 #include "demandDrivenData.H"
 #include "oversetPolyPatch.H"
+#include "findRefCell.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -151,6 +152,32 @@ Foam::oversetMesh::~oversetMesh()
 const Foam::oversetInterpolation& Foam::oversetMesh::interpolation() const
 {
     return interpolationPtr_();
+}
+
+
+void Foam::oversetMesh::setRefCell
+(
+    const volScalarField& field,
+    const dictionary& dict,
+    label& refCelli,
+    scalar& refValue
+) const
+{
+    // Set the reference cell using existing machinery
+    Foam::setRefCell(field, dict, refCelli, refValue);
+
+    // If the fringe is not coupled for this field (explicit overset treatment),
+    // then we must avoid setting the reference cell because explicit overset
+    // acts as a cell centred fixed value boundary condition. We achieve this by
+    // invalidating refCelli, thus avoiding setting the reference for this field
+    // when fvMatrix::setReference is called.
+    // Note that we are relying on the fact that oversetPatch must come first in
+    // the boundaryField as this is already necessary for correct flux
+    // reconstruction.
+    if (!field.boundaryField()[0].coupled())
+    {
+        refCelli = -1;
+    }
 }
 
 

@@ -60,6 +60,42 @@ void oversetFvPatchField<Type>::setCoupledFringe
 }
 
 
+template<class Type>
+void oversetFvPatchField<Type>::oversetInterpolate
+(
+    GeometricField<Type, fvPatchField, volMesh>& psi
+)
+{
+    // Loop through boundary field and find overset patch
+    forAll(psi.boundaryField(), patchI)
+    {
+        fvPatchField<Type>& psip = psi.boundaryField()[patchI];
+
+        if (isA<oversetFvPatchField<Type> >(psip))
+        {
+            oversetFvPatchField<Type>& opf =
+                refCast<oversetFvPatchField<Type> >(psip);
+
+            // Store old settings: coupledFringe and conservativeCorrection
+            const bool cfOrig = opf.coupled();
+            const bool ccOrig = opf.conservativeCorrection();
+
+            // Switch on coupled fringe and switch off conservative correction
+            // to allow manual interpolation
+            opf.setCoupledFringe(true);
+            opf.setConservativeCorrection(false);
+
+            // Perform overset interpolation
+            opf.initEvaluate(Pstream::defaultComms()); // Performs interpolation
+            opf.evaluate(Pstream::defaultComms()); // Sets hole cell values
+
+            // Finally, revert to original settings
+            opf.setCoupledFringe(cfOrig);
+            opf.setConservativeCorrection(ccOrig);
+        }
+    }
+}
+
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 template<class Type>
