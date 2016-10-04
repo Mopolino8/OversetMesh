@@ -53,7 +53,7 @@ namespace Foam
 void regionWiseOversetAdjustPhi
 (
     surfaceScalarField& phi,
-    volVectorField& U
+    const volVectorField& U
 );
 
 } // End namespace Foam

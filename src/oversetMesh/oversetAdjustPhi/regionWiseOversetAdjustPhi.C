@@ -37,7 +37,7 @@ License
 void Foam::regionWiseOversetAdjustPhi
 (
     surfaceScalarField& phi,
-    volVectorField& U
+    const volVectorField& U
 )
 {
     const fvMesh& mesh = phi.mesh();
@@ -90,7 +90,7 @@ void Foam::regionWiseOversetAdjustPhi
          && !isA<emptyOversetFvPatchVectorField>(Up)
         )
         {
-            // Note: no need to distinguish between fixed value fluxes or other,
+            // Note: no need to distinguish between fixed value fluxes or
             // adjustable fluxes as only the fringe fluxes are going to be
             // scaled
             forAll (phip, i)
@@ -110,7 +110,7 @@ void Foam::regionWiseOversetAdjustPhi
         }
     }
 
-    // Stage 2
+    // STAGE 2
     // Loop through fringe faces and collect incoming/outgoing fluxes
 
     // Note: fringe faces contain both internal and processor boundary
@@ -152,13 +152,13 @@ void Foam::regionWiseOversetAdjustPhi
                 {
                     // Flux going into the region (out of the fringe).
                     // Note that positive sign is kept.
-                    regionIn[curRegion] += curPhi;
+                    regionFringeIn[curRegion] += curPhi;
                 }
                 else
                 {
                     // Flux coming out of the region (into the fringe).
                     // Note reverted sign.
-                    regionOut[curRegion] -= curPhi;
+                    regionFringeOut[curRegion] -= curPhi;
                 }
             }
             else
@@ -167,13 +167,13 @@ void Foam::regionWiseOversetAdjustPhi
                 {
                     // Flux going out of the region (into the fringe).
                     // Note that positive sign is kept.
-                    regionOut[curRegion] += curPhi;
+                    regionFringeOut[curRegion] += curPhi;
                 }
                 else
                 {
                     // Flux going into the region (out of the fringe).
                     // Note reverted sign.
-                    regionIn[curRegion] -= curPhi;
+                    regionFringeIn[curRegion] -= curPhi;
                 }
             }
         }
@@ -272,10 +272,30 @@ void Foam::regionWiseOversetAdjustPhi
     reduce(regionFringeIn, sumOp<scalarField>());
     reduce(regionFringeOut, sumOp<scalarField>());
 
+    // This method will inevitably fail when regionFringeOut is zero, which can
+    // happen if we do not have fully enclosed mesh inside a background mesh
+    // (i.e. when we have a mesh which consists of left and right regions
+    // connected through a planar fringe layer)
+    if (min(regionFringeOut) < SMALL)
+    {
+         WarningIn
+         (
+             "void Foam::regionWiseOversetAdjustPhi\n"
+             "(\n"
+             "    surfaceScalarField& phi,\n"
+             "    volVectorField& U\n"
+             ")"
+         )   << "Outflow through fringe in a certain region is zero. "
+             << "Skipping flux adjustment for: " << phi.name()
+             << endl;
+
+         return;
+    }
+
     // Calculate region flux correction. Note: only fluxes going out of the
     // region through the fringe will be scaled.
     scalarField regionFringeFluxScale =
-        (regionIn - regionOut + regionFringeIn)/(regionFringeOut + SMALL);
+        (regionIn - regionOut + regionFringeIn)/regionFringeOut;
 
     if (oversetMesh::debug)
     {
@@ -285,6 +305,8 @@ void Foam::regionWiseOversetAdjustPhi
         Info<< "Region fringe balance for " << phi.name()
             << ": in = " << totalRegionIn
             << ", out = " << totalRegionOut
+            << ", fringeIn = " << regionFringeIn
+            << ", fringeOut = " << regionFringeOut
             << ", balance = " << totalRegionOut - totalRegionIn
             << ", fluxScale = " << regionFringeFluxScale
             << endl;
