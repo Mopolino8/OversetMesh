@@ -75,6 +75,11 @@ int main(int argc, char *argv[])
 
         // Update moving wall velocity boundary condition and calculate the flux
         U.correctBoundaryConditions();
+
+        // Forced overset update: make sure the overset interpolation is
+        // performed regardless of whether the coupledFringe is specified.
+        oversetFvPatchVectorField::oversetInterpolate(U);
+
         phi == (linearInterpolate(U) & mesh.Sf());
 
         // Resetting pressure field
@@ -85,6 +90,7 @@ int main(int argc, char *argv[])
 
         // Solve potential flow equations
 
+        // Adjust fluxes
         oversetAdjustPhi(phi, U); // Fringe flux adjustment
         globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
 
@@ -127,6 +133,9 @@ int main(int argc, char *argv[])
             {
                 p.relax();
             }
+
+            // Perform overset interpolation (after flux reconstruction)
+            oversetFvPatchScalarField::oversetInterpolate(p);
         }
 
         // Update div phi field for visualisation purposes

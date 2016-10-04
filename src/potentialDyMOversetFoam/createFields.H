@@ -53,8 +53,12 @@
         fvc::div(phi)
     );
 
+    // Set reference cell taking into account whether implicit or explicit
+    // overset algorithm is used for field p.
+    const oversetMesh& om = oversetMesh::New(mesh);
     label pRefCell = 0;
     scalar pRefValue = 0.0;
-    setRefCell(p, mesh.solutionDict().subDict("PISO"), pRefCell, pRefValue);
+    om.setRefCell(p, piso.dict(), pRefCell, pRefValue);
 
+    // Write overset masks
 #   include "writeOversetMasks.H"
