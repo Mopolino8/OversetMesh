@@ -259,7 +259,7 @@ public:
         // Evaluation functions
 
             //- Update the coefficients associated with the patch field
-            void updateCoeffs();
+            virtual void updateCoeffs();
 
             //- Initialise the evaluation of the patch field
             virtual void initEvaluate
