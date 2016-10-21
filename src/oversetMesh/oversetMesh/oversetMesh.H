@@ -31,6 +31,9 @@ Description
 Author
     Hrvoje Jasak, Wikki Ltd.  All rights reserved.
 
+Contributor
+    Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
+
 SourceFiles
     oversetMesh.C
     oversetMeshAddressing.C
@@ -48,6 +51,7 @@ SourceFiles
 #include "oversetRegion.H"
 #include "oversetInterpolation.H"
 #include "fvMatrices.H"
+#include "mapDistributeOversetDonors.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -167,45 +171,26 @@ private:
 
         // Interpolation addressing
 
-            //- Local donors cells: cells where the donor is on the
-            //  same processor as the acceptor
-            mutable labelList* localDonorsPtr_;
+                //- Map-distribute comms tool which takes control of the
+                //  efficient donor data exchange and interpolation in
+                //  parallel. This tool is also going to be used for serial
+                //  runs, providing some penalty because of unnecessary
+                //  indirection. We don't care about efficiency in serial
+                //  runs for the moment. VV, 21/Oct/2016.
+                mutable mapDistributeOversetDonors* mapPtr_;
 
-            //- Local donor neighbouring cells: cells where the master donor is
-            //  on the same processor as the acceptor. For each master donor,
-            //  store neighbouring donor cells
-            mutable labelListList* localNeighbouringDonorsPtr_;
+                //- List containing number of donors my processor is sending to
+                //  other processors.
+                //  Example: nDonorsToProcessorMap[2][5] = 123 means that
+                //  processor 2 sends 123 donors to processor 5
+                mutable labelListList* nDonorsToProcessorMapPtr_;
 
-            //- Local donors addressing: acceptor index for each
-            //  local donor
-            mutable labelList* localDonorAddrPtr_;
-
-            //- Remote donors cells: a local donor cell for which the
-            //  acceptor is on a remote processor
-            mutable labelList* remoteDonorsPtr_;
-
-            //- Remote donor neighbouring cells: cells where the master donor is
-            //  on local processor, and acceptor is on a remote processor. For
-            //  each master donor, store a list of neighbouring donor cells
-            //  Note: only neighbouring cells on master donor processor are
-            //  considered at the moment
-            mutable labelListList* remoteNeighbouringDonorsPtr_;
-
-            //- Remote acceptor addressing: local acceptor cell where the
-            //  donor is on a remote processor
-            mutable labelList* remoteAcceptorAddrPtr_;
-
-
-            // Master processor data re-mapping addressing
-            // This data exists only on master processor
-
-                //- Parallel data information processor addressing
-                //  For each global acceptor, record donor processor index
-                mutable labelListList* globalAcceptFromProcPtr_;
-
-                //- Parallel data information cell addressing
-                //  For each global acceptor, record donor cell index
-                mutable labelListList* globalAcceptFromCellPtr_;
+                //- List containing all the acceptors for a single (received)
+                //  donor. This allows us to loop over donors (instead of
+                //  acceptors) and add their contributions to possibly more than
+                //  one acceptor. Consider using a different container
+                //  (e.g. std::multimap)
+                mutable labelListList* donorsToAcceptorsMapPtr_;
 
 
             //- Overset interpolation
@@ -229,8 +214,8 @@ private:
         //- Calculate hole faces
         void calcHoleFaces() const;
 
-        //- Calculate parallel fringe interpolation addressing
-        void calcParallelAddressing() const;
+        //- Calculate interpolation addressing for serial and parallel runs
+        void calcInterpolationAddressing() const;
 
 
         // Storage management
@@ -367,45 +352,16 @@ public:
 
         // Fringe and interpolation
 
-            //- Return local donor cells: cells where donor and
-            //  acceptor are on the same processor
-            const labelList& localDonors() const;
+            // Interpolation addressing
 
-            //- Return local neighbouring donor cells: cells where master donor
-            //  and acceptor are on the same processor. For each master donor,
-            //  store a list of neighbouring donors
-            const labelListList& localNeighbouringDonors() const;
+                //- Return map distribute tool
+                const mapDistributeOversetDonors& map() const;
 
-            //- Return local donor addressing: acceptor index for each
-            //  local donor
-            const labelList& localDonorAddr() const;
+                //- Return number of donors to processor map
+                const labelListList& nDonorsToProcessorMap() const;
 
-            //- Return remote donor cells: cells where the donor is local
-            //  and acceptor is on a remote processor
-            const labelList& remoteDonors() const;
-
-            //- Return remote neighbouring donor cells: cells where the master
-            //  donor is local and acceptor is on a remote processor. For each
-            //  master donor, store a list of neighbouring donors
-            //  Note: only neighbouring cells on master donor processor are
-            //  considered at the moment
-            const labelListList& remoteNeighbouringDonors() const;
-
-            //- Return remote acceptor addressing: local acceptor index
-            //  for which donor is on a remote processor
-            const labelList& remoteAcceptorAddr() const;
-
-
-            // Master processor data re-mapping addressing
-            // This data exists only on master processor
-
-                //- Parallel data information processor addressing
-                //  For each global acceptor, record donor processor index
-                const labelListList& globalAcceptFromProc() const;
-
-                //- Parallel data information cell addressing
-                //  For each global acceptor, record donor cell index
-                const labelListList& globalAcceptFromCell() const;
+                //- Return received donors to acceptors map
+                const labelListList& donorsToAcceptorsMap() const;
 
 
             //- Return interpolation

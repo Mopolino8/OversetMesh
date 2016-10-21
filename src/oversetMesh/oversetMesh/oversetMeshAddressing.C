@@ -783,21 +783,16 @@ void Foam::oversetMesh::calcHoleFaces() const
 }
 
 
-void Foam::oversetMesh::calcParallelAddressing() const
+void Foam::oversetMesh::calcInterpolationAddressing() const
 {
     if
     (
-        localDonorsPtr_
-     || localNeighbouringDonorsPtr_
-     || localDonorAddrPtr_
-     || remoteDonorsPtr_
-     || remoteNeighbouringDonorsPtr_
-     || remoteAcceptorAddrPtr_
-     || globalAcceptFromProcPtr_
-     || globalAcceptFromCellPtr_
+        mapPtr_
+     || nDonorsToProcessorMapPtr_
+     || donorsToAcceptorsMapPtr_
     )
     {
-        FatalErrorIn("void oversetMesh::calcParallelAddressing() const")
+        FatalErrorIn("void oversetMesh::calcInterpolationAddressing() const")
             << "Fringe addressing already calculated"
             << abort(FatalError);
     }
@@ -838,7 +833,7 @@ void Foam::oversetMesh::calcParallelAddressing() const
         dcIndex[dc[dcI]] = dcI;
     }
 
-    // Create local donor to local acceptor addressing
+    // Create list containing local donors
     localDonorsPtr_ = new labelList(ac.size(), -1);
     labelList& locDonors = *localDonorsPtr_;
 
@@ -855,6 +850,87 @@ void Foam::oversetMesh::calcParallelAddressing() const
 
     if (Pstream::parRun())
     {
+        // Parallel run: create mapDistribute
+        // Algorithm:
+        // 1) First calculate sending map
+        //    - Loop through all regions, marking all donors
+        //    - For each donor, we must keep track of the processor we are
+        //      sending donor data to. Note that a single donor data can go to
+        //      multiple processors.
+        //    * Note: We currently do not take into account the possibility of
+        //      having a donor from the neighbourhood of master donor being on
+        //      another processor, i.e. all donors for acceptor on processor I
+        //      have to come from the same processor J (where I = J means that
+        //      no communication is required). This will only very locally
+        //      affect the accuracy of interpolation, which I think is not
+        //      important at this stage. VV, 20/Oct/2016.
+
+        // Create counter for all donors on this processor
+        label nDonors = 0;
+
+        // Loop through all regions
+        forAll(regions_, regionI)
+        {
+            // Get the list of donors
+            const donorAcceptorList& curDonors = regions_[regionI].donors();
+
+            // Loop through all donors
+            forAll (curDonors, dI)
+            {
+
+
+
+
+
+                if (curDonors[dI].acceptorProcNo() == Pstream::myProcNo())
+                {
+                    // Local donor and acceptor
+                    // Data has already been recorded from the acceptor side
+                    // Add debug check?
+                }
+                else
+                {
+                    // Get donor cell index
+                    const label& donorCellI = curDonors[dI].donorCell();
+
+                    // Record local donor for a remote acceptor:
+                    // Data will be sent to the master
+                    remDonors[nRemoteDonors] = donorCellI;
+
+                    procRemoteDonors[nRemoteDonors] = curDonors[dI];
+
+                    // Get neighbouring cells of this cells
+                    const labelList& curNbrs = cc[donorCellI];
+
+                    // Mark neighbouring donors based on extension level
+                    markNeighbouringDonors
+                    (
+                        curNbrs,
+                        cc,
+                        donorMask,
+                        extDonors,
+                        interpolationPtr_->extensionLevel()
+                    );
+
+                    // Transfer the list from hash set into
+                    // localNeighbouringDonors list for this master donor
+                    // (acceptor)
+                    remNeiDonors[nRemoteDonors] = extDonors.toc();
+
+                    // Clear the hash set, keeping the allocated memory
+                    extDonors.clear();
+
+                    // Increment the counter
+                    nRemoteDonors++;
+                }
+            }
+        }
+
+
+
+
+
+
         // Parallel run: handle remote donors
         // Algorithm:
         // 1) Collect local donors and mark them directly in the list
@@ -1133,7 +1209,7 @@ void Foam::oversetMesh::calcParallelAddressing() const
                     {
                         FatalErrorIn
                         (
-                            "void oversetMesh::calcParallelAddressing() const"
+                            "void oversetMesh::calcInterpolationAddressing() const"
                         )   << "Cannot find pairing for acceptor " << da
                             << abort(FatalError);
                     }
@@ -1151,7 +1227,7 @@ void Foam::oversetMesh::calcParallelAddressing() const
                 {
                     FatalErrorIn
                     (
-                        "void oversetMesh::calcParallelAddressing() const"
+                        "void oversetMesh::calcInterpolationAddressing() const"
                     )   << "Error in parallel addressing assembly "
                         << " for processor " << procI
                         << abort(FatalError);
@@ -1219,7 +1295,7 @@ void Foam::oversetMesh::calcParallelAddressing() const
     // Check serial addressing
     if (min(locDonorAddr) < 0)
     {
-        FatalErrorIn("void oversetMesh::calcParallelAddressing() const")
+        FatalErrorIn("void oversetMesh::calcInterpolationAddressing() const")
             << "Error in local addressing assembly"
             << abort(FatalError);
     }
@@ -1253,14 +1329,9 @@ void Foam::oversetMesh::clearOut() const
     deleteDemandDrivenData(holeInternalFacesPtr_);
     deleteDemandDrivenData(acceptorInternalFacesPtr_);
 
-    deleteDemandDrivenData(localDonorsPtr_);
-    deleteDemandDrivenData(localNeighbouringDonorsPtr_);
-    deleteDemandDrivenData(localDonorAddrPtr_);
-    deleteDemandDrivenData(remoteDonorsPtr_);
-    deleteDemandDrivenData(remoteNeighbouringDonorsPtr_);
-    deleteDemandDrivenData(remoteAcceptorAddrPtr_);
-    deleteDemandDrivenData(globalAcceptFromProcPtr_);
-    deleteDemandDrivenData(globalAcceptFromCellPtr_);
+    deleteDemandDrivenData(mapPtr_);
+    deleteDemandDrivenData(nDonorsToProcessorMapPtr_);
+    deleteDemandDrivenData(donorsToAcceptorsMapPtr_);
 }
 
 
@@ -1482,147 +1553,36 @@ const Foam::labelList& Foam::oversetMesh::acceptorInternalFaces() const
 }
 
 
-const Foam::labelList& Foam::oversetMesh::localDonors() const
+const Foam::mapDistributeOversetDonors& Foam::oversetMesh::map() const
 {
-    if (!localDonorsPtr_)
+    if (!mapPtr_)
     {
-        calcParallelAddressing();
+        calcInterpolationAddressing();
     }
 
-    return *localDonorsPtr_;
+    return *mapPtr_;
 }
 
 
-const Foam::labelListList& Foam::oversetMesh::localNeighbouringDonors() const
+const Foam::labelListList& Foam::oversetMesh::nDonorsToProcessorMap() const
 {
-    if (!localNeighbouringDonorsPtr_)
+    if (!nDonorsToProcessorMapPtr_)
     {
-        calcParallelAddressing();
+        calcInterpolationAddressing();
     }
 
-    return *localNeighbouringDonorsPtr_;
+    return *nDonorsToProcessorMapPtr_;
 }
 
 
-const Foam::labelList& Foam::oversetMesh::localDonorAddr() const
+const Foam::labelListList& Foam::oversetMesh::donorsToAcceptorsMap() const
 {
-    if (!localDonorAddrPtr_)
+    if (!donorsToAcceptorsMapPtr_)
     {
-        calcParallelAddressing();
+        calcInterpolationAddressing();
     }
 
-    return *localDonorAddrPtr_;
-}
-
-
-const Foam::labelList& Foam::oversetMesh::remoteDonors() const
-{
-    if (!remoteDonorsPtr_)
-    {
-        calcParallelAddressing();
-    }
-
-    return *remoteDonorsPtr_;
-}
-
-
-const Foam::labelListList& Foam::oversetMesh::remoteNeighbouringDonors() const
-{
-    if (!remoteNeighbouringDonorsPtr_)
-    {
-        calcParallelAddressing();
-    }
-
-    return *remoteNeighbouringDonorsPtr_;
-}
-
-
-const Foam::labelList& Foam::oversetMesh::remoteAcceptorAddr() const
-{
-    if (!remoteAcceptorAddrPtr_)
-    {
-        calcParallelAddressing();
-    }
-
-    return *remoteAcceptorAddrPtr_;
-}
-
-
-const Foam::labelListList& Foam::oversetMesh::globalAcceptFromProc() const
-{
-    // We cannot calculate the global data using usual lazy evaluation
-    // mechanism since the data only exists on the master processor. Add
-    // additional guards, VV, 8/Feb/2016.
-    if (!Pstream::parRun())
-    {
-        FatalErrorIn
-        (
-            "const labelListList& oversetMesh::globalAcceptFromProc() const"
-        )   << "Attempted to calculate global overset data for a serial run."
-            << "This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!Pstream::master())
-    {
-        FatalErrorIn
-        (
-            "const labelListList& oversetMesh::globalAcceptFromProc() const"
-        )   << "Attempted to calculate global overset data for a slave "
-            << "processor. This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!globalAcceptFromProcPtr_)
-    {
-        FatalErrorIn
-        (
-            "const labelListList& oversetMesh::globalAcceptFromProc() const"
-        )   << "Calculation of global overset data not possible because the\n "
-            << "data exists only on the master processor. Please calculate\n"
-            << "overset addressing by calling .localDonors() member function\n"
-            << "before calling this function."
-            << abort(FatalError);
-    }
-
-    return *globalAcceptFromProcPtr_;
-}
-
-
-const Foam::labelListList& Foam::oversetMesh::globalAcceptFromCell() const
-{
-    // We cannot calculate the global data using usual lazy evaluation
-    // mechanism since the data only exists on the master processor. Add
-    // additional guards, VV, 8/Feb/2016.
-    if (!Pstream::parRun())
-    {
-        FatalErrorIn
-        (
-            "const labelListList& oversetMesh::globalAcceptFromCell() const"
-        )   << "Attempted to calculate global overset data for a serial run."
-            << "This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!Pstream::master())
-    {
-        FatalErrorIn
-        (
-            "const labelListList& oversetMesh::globalAcceptFromCell() const"
-        )   << "Attempted to calculate global overset data for a slave "
-            << "processor. This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!globalAcceptFromCellPtr_)
-    {
-        FatalErrorIn
-        (
-            "const labelListList& oversetMesh::globalAcceptFromCell() const"
-        )   << "Calculation of global overset data not possible because the\n "
-            << "data exists only on the master processor. Please calculate\n"
-            << "overset addressing by calling .localDonors() member function\n"
-            << "before calling this function."
-            << abort(FatalError);
-    }
-
-    return *globalAcceptFromCellPtr_;
+    return *donorsToAcceptorsMapPtr_;
 }
 
 
