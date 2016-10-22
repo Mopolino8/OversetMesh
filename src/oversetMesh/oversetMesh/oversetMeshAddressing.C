@@ -803,50 +803,145 @@ void Foam::oversetMesh::calcInterpolationAddressing() const
 
     // Mask hole cells
     const labelList& hc = holeCells();
-
     forAll (hc, hcI)
     {
         donorMask[hc[hcI]] = false;
     }
 
-    // Mark the acceptors with acceptor cell index and exclude them from the
-    // extended donor selection
+    // Mask acceptor cells
     const labelList& ac = acceptorCells();
-
-    labelList acIndex(mesh().nCells(), -1);
-
     forAll (ac, acI)
     {
-        acIndex[ac[acI]] = acI;
-
-        // Acceptor cells cannot be extended (neighbouring) donors
         donorMask[ac[acI]] = false;
     }
-
-    // Mark the donors with donor cell index
-    const labelList& dc = donorCells();
-
-    labelList dcIndex(mesh().nCells(), -1);
-
-    forAll (dc, dcI)
-    {
-        dcIndex[dc[dcI]] = dcI;
-    }
-
-    // Create list containing local donors
-    localDonorsPtr_ = new labelList(ac.size(), -1);
-    labelList& locDonors = *localDonorsPtr_;
-
-    // Create local neighbouring donors
-    localNeighbouringDonorsPtr_ = new labelListList(ac.size());
-    labelListList& locNeiDonors = *localNeighbouringDonorsPtr_;
 
     // Get cell-cell addressing for neighbouring donor search
     const labelListList& cc = mesh().cellCells();
 
-    // Create local donor to local acceptor addressing
-    localDonorAddrPtr_ = new labelList(ac.size(), -1);
-    labelList& locDonorAddr = *localDonorAddrPtr_;
+    // Create list containing number of donors my processor is sending to other
+    // processors. Note that for a serial run, this list is completely
+    // unnecessary, but I prefer writing this in a general way, where I don't
+    // care about minor loss of efficiency for serial runs. VV, 21/Oct/2016.
+    nDonorsToProcessorMapPtr_ = new labelListList(Pstream::nProcs());
+    labelListList& nDonorsToProcessorMap = *nDonorsToProcessorMapPtr_;
+
+    forAll (nDonorsToProcessorMap, procI)
+    {
+        nDonorsToProcessorMap[procI].setSize(PStream::nProcs());
+    }
+
+//    // Create list containing received donor to acceptor mapping needed for
+//    // interpolation
+//    donorsToAcceptorsPtr_ = new labelListList(Pstream::nProcs());
+//    labelListList& donorsToAcceptorsMap = *donorsToAcceptorsPtr_;
+
+    // Algorithm:
+    // 1) First, we need to calculate the sending map:
+    //    - Loop through all regions and then through all donors for that region
+    //    - Mark the master donor and see to which processor I need to send its
+    //      data
+    //    - Loop through neighbouring donors for this donor and mark them for
+    //      sending to the same processor. Handle the possibility that this
+    //      donor has already been visited
+    //    - While looping through donors, count how many donors I'm sending to
+    //      each processor
+    // 2) Construct the map distribute object by providing sending map and
+    //    nDonorsToProcessorMap. Note that the map distribute object will
+    //    create its constructMap
+
+    // Get the nDonorsToProcessorMap for my processor
+    labelList& numberOfLocalDonorsToProcs =
+        nDonorsToProcessorMap[Pstream::myProcNo()];
+
+    // Create sending map and roughly initialize the capacity as 6 times the
+    // number of donors for this processor (based on the assumption that all
+    // data goes to a single processor and we have hexahedral cells). This
+    // assumption should be fine considered the memory penalty of the CFD run
+    // compared to this.
+    // Note: hash set is used to send only unique donors as single donor can be
+    // used for multiple acceptors
+    List<labelHashSet> sendMap(Pstream::nProcs());
+
+    // Enclosed in scope for readability
+    {
+        // Count number of local donors
+        label nDonorsToSend = 0;
+
+        forAll (regions_, regionI)
+        {
+            nDonorsToSend += regions_[regionI].donors().size();
+        }
+        nDonorsToSend *= 6;
+
+        // Set the capacity of each sendMap (for each processor)
+        forAll (sendMap, receivingProcI)
+        {
+            sendMap[receivingProcI].resize(nDonorsToSend);
+        }
+    }
+    
+    // Loop through all regions
+    forAll (regions_, regionI)
+    {
+        // Get the list of donors/acceptor data
+        const donorAcceptorList& regionDonors = regions_[regionI].donors();
+
+        // Loop through all donors
+        forAll (curDonors, dI)
+        {
+            // Get necessary master donor data
+            const donorAcceptor& curDonor = regionDonors[dI];
+            const label donorCellI = curDonor.donorCell();
+            const label acceptorCellI = curDonor.acceptorCell();
+            const label acceptorProcIndex = curDonor.acceptorProcNo();
+
+            // Insert this master donor into the hash table for the processor
+            // I'm sending data to
+            if
+            (
+                sendMap[acceptorProcIndex].insert(donorCellI);
+            )
+            {
+                // This pair has not been registered yet, increment the counter
+                ++numberOfLocalDonorsToProcs[acceptorProcIndex];
+            }
+
+            // Loop through all neighbours of this master donor (these make up
+            // the interpolation stencil).
+            // Note: not necessary if injectionInterpolation is used
+            if (!isA<injectionInterpolation>(interpolation()))
+            {
+                const labelList& curNbrs = cc[donorCellI];
+
+                forAll (curNbrs, nbrI)
+                {
+                    // Get neighbouring cell label
+                    const label& nbrCellI = curNbrs[nbrI];
+
+                    // Check if the cell is eligible to be donor
+                    if (donorMaks[nbrCellI])
+                    {
+                        // This cell is also a neighbouring donor, append it
+                        // and increment the counter if it is unique
+                        if
+                        (
+                            sendMap[acceptorProcIndex].insert
+                            (
+                                nbrCellI,
+                            );
+                        )
+                        {
+                            ++numberOfLocalDonorsToProcs[acceptorProcIndex];
+                        }
+                    }
+                } // End for all neighbours
+            } // End if this isn't injection interpolation
+
+            // Further
+
+        }
+    }
+
 
     if (Pstream::parRun())
     {
@@ -877,11 +972,6 @@ void Foam::oversetMesh::calcInterpolationAddressing() const
             // Loop through all donors
             forAll (curDonors, dI)
             {
-
-
-
-
-
                 if (curDonors[dI].acceptorProcNo() == Pstream::myProcNo())
                 {
                     // Local donor and acceptor
@@ -1331,7 +1421,6 @@ void Foam::oversetMesh::clearOut() const
 
     deleteDemandDrivenData(mapPtr_);
     deleteDemandDrivenData(nDonorsToProcessorMapPtr_);
-    deleteDemandDrivenData(donorsToAcceptorsMapPtr_);
 }
 
 
@@ -1572,17 +1661,6 @@ const Foam::labelListList& Foam::oversetMesh::nDonorsToProcessorMap() const
     }
 
     return *nDonorsToProcessorMapPtr_;
-}
-
-
-const Foam::labelListList& Foam::oversetMesh::donorsToAcceptorsMap() const
-{
-    if (!donorsToAcceptorsMapPtr_)
-    {
-        calcInterpolationAddressing();
-    }
-
-    return *donorsToAcceptorsMapPtr_;
 }
 
 

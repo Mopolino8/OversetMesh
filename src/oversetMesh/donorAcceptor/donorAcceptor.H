@@ -30,7 +30,10 @@ Description
 SourceFiles
 
 Author
-    Hrvoje Jasak, Wikki Ltd.
+    Hrvoje Jasak, Wikki Ltd.  All rights reserved.
+
+Contributor
+    Vuko Vukcevic, FMENA Zagreb.  All rights reserved.
 
 \*---------------------------------------------------------------------------*/
 
@@ -90,6 +93,16 @@ class donorAcceptor
             //- Donor location
             point donorPoint_;
 
+            //- Extended donor cell numbers
+            DynamicList<label, 10> extendedDonorCells_;
+
+            //- Extended donor points, used to construct weights in different
+            //  overset interpolation schemes
+            DynamicList<point, 10> extendedDonorPoints_;
+
+            // Note that the processor number is the same for all extended
+            // donors
+
 
 public:
 
@@ -112,7 +125,9 @@ public:
             acceptorPoint_(acceptorPoint),
             donorCell_(-1),
             donorProcNo_(-1),
-            donorPoint_(vector::zero)
+            donorPoint_(vector::zero),
+            extendedDonorCells_(),
+            extendedDonorPoints_()
         {}
 
         //- Construct from Istream
@@ -123,7 +138,9 @@ public:
             acceptorPoint_(is),
             donorCell_(readLabel(is)),
             donorProcNo_(readLabel(is)),
-            donorPoint_(is)
+            donorPoint_(is),
+            extendedDonorCells(is),
+            extendedDonorPoints(is)
         {}
 
         //- Copy constructor - default
@@ -240,6 +257,47 @@ public:
                 donorPoint_ = donorPoint;
             }
 
+            //- Set extended donors by going through neighbours of currently set
+            //  "best" donor, taking into account whether the cell is eligible
+            //  donor (not acceptor or hole).
+            //  Note 1: we do not check whether "best" donor is actually set for
+            //          better performance.
+            //  Note 2: setting extended donors is not necessary for injection
+            //          interpolation, consider optimising for this case.
+            void setExtendedDonors
+            (
+                const boolList& eligibleDonors,
+                const labelListList& cCells,
+                const vectorField& cellCentres
+            )
+            {
+                // Get neighbours of this donor
+                const labelList& nbrs = cCells[donorCell_];
+
+                // Loop through neighbours and mark eligible ones
+                forAll (nbrs, nbrI)
+                {
+                    const label& nbrCellI = nbrs[nbrI];
+
+                    if (eligibleDonors[nbrCellI])
+                    {
+                        extendedDonorCells_.append[nbrCellI];
+                        extendedDonorPoints_.append[cellCentres[nbrCellI]];
+                    }
+                }
+
+                // Note: no need to shrink DynamicLists for parallel efficiency
+                // as IOstream operators first cast into List, thus sending only
+                // necessary data (not the capacity of the DynamicList).
+            }
+
+            //- Copy extended donors from another candidate donor
+            void setExtendedDonors(const donorAcceptor& rd)
+            {
+                extendedDonorCells_ = rd_.extendedDonorCells_;
+                extendedDonorPoints_ = rd.extendedDonorPoints_;
+            }
+
             //- Reject donor: used in overlap minimisation algorithms via Donor
             //  Suitability Function
             void rejectDonor()
@@ -261,6 +319,9 @@ public:
             donorCell_ = rd.donorCell_;
             donorProcNo_ = rd.donorProcNo_;
             donorPoint_ = rd.donorPoint_;
+
+            extendedDonorCells_ = rd.extendedDonorCells_;
+            extendedDonorPoints_ = rd.extendedDonorPoints_;
         }
 
 
@@ -278,6 +339,9 @@ public:
              && a.acceptorPoint_ == b.acceptorPoint_
              && a.donorCell_ == b.donorCell_
              && a.donorProcNo_ == b.donorProcNo_;
+
+             // Note: do not check whether extended neighbours are the same, we
+             // assume they will be if donor data is the same
         }
 
         friend bool operator!=
@@ -300,7 +364,9 @@ public:
                 >> rd.acceptorPoint_
                 >> rd.donorCell_
                 >> rd.donorProcNo_
-                >> rd.donorPoint_;
+                >> rd.donorPoint_
+                >> rd.extendedDonorCells_
+                >> rd.extendedDonorPoints_;
 
             return is;
         }
@@ -313,7 +379,9 @@ public:
                 << rd.acceptorPoint_ << token::SPACE
                 << rd.donorCell_ << token::SPACE
                 << rd.donorProcNo_ << token::SPACE
-                << rd.donorPoint_;
+                << rd.donorPoint_ << token::SPACE
+                << rd.extendedDonorCells_ << token::SPACE
+                << rd.extendedDonorPoints_;
 
             return os;
         }

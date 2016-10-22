@@ -161,28 +161,28 @@ class oversetRegion
         //- Prepare hole triangular mesh
         void calcHoleTriMesh() const;
 
-        // Calculate donor regions
+        //- Calculate donor regions
         void calcDonorRegions() const;
 
-        // Calculate acceptor regions
+        //- Calculate acceptor regions
         void calcAcceptorRegions() const;
 
-        // Calculate donor and acceptor cells
+        //- Calculate donor and acceptor cells
         void calcDonorAcceptorCells() const;
 
-        // Calculate hole cells
+        //- Calculate hole cells
         void calcHoleCells() const;
 
-        // Calculate eligible donor cells
+        //- Calculate eligible donor cells
         void calcEligibleDonorCells() const;
 
-        // Calculate bounds
+        //- Calculate bounds
         void calcBounds() const;
 
-        // Calculate cell octree
+        //- Calculate cell octree
         void calcCellSearch() const;
 
-        // Clear all data
+        //- Clear all data
         void clearOut() const;
 
 

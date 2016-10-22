@@ -155,6 +155,9 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
     // Get cell centres
     const vectorField& cc = mesh_.cellCentres();
 
+    // Get cell cells (for extended neighbourhood search)
+    const labelListList& cCells = mesh().cellCells();
+
     // Get list of donor regions
     const labelList& dr = donorRegions();
 
@@ -216,6 +219,13 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
             const labelList& curDonors = regions[dr[drI]].eligibleDonors();
 
+            // Mask eligible donors for extended neighbourhood search
+            boolList eligibleDonorMask(mesh_.nCells(), false);
+            forAll (curDonors, i)
+            {
+                eligibleDonorMask[curDonors[i]] = true;
+            }
+
             // Get donor region tree
             const indexedOctree<treeDataCell>& tree =
                 curDonorRegion.cellSearch();
@@ -271,13 +281,21 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                                     cc[curDonors[pih.index()]]
                                 );
 
+                                // Set extended donors by going through
+                                // neigbours of currently set "best" donor
+                                curDA[daI].setExtendedDonors
+                                (
+                                    eligibleDonorMask,
+                                    cCells,
+                                    cc
+                                );
+
                                 // Note:
-                                // If the interpolation stencil requires
-                                // larger neighbourhood, additional donor cells
-                                // can be located and gathered here.
-                                // Issues arise if parts of the interpolation
-                                // stencil straddle the processor boundary
-                                // HJ, 19/Jun/2015
+                                // It is possible to use better criterion for
+                                // extended stencil than simply immediate
+                                // neighbours of the found donor cell. Note that
+                                // this also neglects neigbhouring donors across
+                                // processor boundaries. VV, 21/Oct/2016.
                             }
                         }
                     }
@@ -342,6 +360,10 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                                     candidate[cI].donorProcNo(),
                                     candidate[cI].donorPoint()
                                 );
+
+                                // Also record extended donors from the
+                                // candidate
+                                recombined[cI].setExtendedDonors(candidate[cI]);
                             }
                             else
                             {
@@ -357,6 +379,13 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                                         candidate[cI].donorCell(),
                                         candidate[cI].donorProcNo(),
                                         candidate[cI].donorPoint()
+                                    );
+
+                                    // Also record extended donors from the
+                                    // candidate
+                                    recombined[cI].setExtendedDonors
+                                    (
+                                        candidate[cI]
                                     );
 
                                     nMultipleHits++;
@@ -527,6 +556,13 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
             const labelList& curDonors = regions[dr[drI]].eligibleDonors();
 
+            // Mask eligible donors for extended neighbourhood search
+            boolList eligibleDonorMask(mesh_.nCells(), false);
+            forAll (curDonors, i)
+            {
+                eligibleDonorMask[curDonors[i]] = true;
+            }
+
             // Get donor region tree
             const indexedOctree<treeDataCell>& tree =
                 curDonorRegion.cellSearch();
@@ -563,6 +599,15 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
                             curDonors[pih.index()],
                             Pstream::myProcNo(),
                             cc[curDonors[pih.index()]]
+                        );
+
+                        // Set extended donors by going through
+                        // neigbours of currently set "best" donor
+                        curDA[daI].setExtendedDonors
+                        (
+                            eligibleDonorMask,
+                            cCells,
+                            cc
                         );
                     }
                 }

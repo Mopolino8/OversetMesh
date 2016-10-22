@@ -185,13 +185,6 @@ private:
                 //  processor 2 sends 123 donors to processor 5
                 mutable labelListList* nDonorsToProcessorMapPtr_;
 
-                //- List containing all the acceptors for a single (received)
-                //  donor. This allows us to loop over donors (instead of
-                //  acceptors) and add their contributions to possibly more than
-                //  one acceptor. Consider using a different container
-                //  (e.g. std::multimap)
-                mutable labelListList* donorsToAcceptorsMapPtr_;
-
 
             //- Overset interpolation
             autoPtr<oversetInterpolation> interpolationPtr_;
@@ -359,9 +352,6 @@ public:
 
                 //- Return number of donors to processor map
                 const labelListList& nDonorsToProcessorMap() const;
-
-                //- Return received donors to acceptors map
-                const labelListList& donorsToAcceptorsMap() const;
 
 
             //- Return interpolation
