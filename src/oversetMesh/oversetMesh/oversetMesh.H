@@ -179,6 +179,15 @@ private:
                 //  runs for the moment. VV, 21/Oct/2016.
                 mutable mapDistribute* mapPtr_;
 
+                //- Remote donor to local acceptor addressing. This mapping
+                //  gives us the index of particular donor AFTER
+                //  mapDistribute::distribute has been called during overset
+                //  interpolation.
+                //  Basically, you give me (possibly remote) donor processor
+                //  number and donor cell index, I give you the index in the
+                //  received list
+                mutable List<labelField>& remoteDonorToLocalAcceptorAddrPtr_;
+
 
             //- Overset interpolation
             autoPtr<oversetInterpolation> interpolationPtr_;
@@ -201,8 +210,9 @@ private:
         //- Calculate hole faces
         void calcHoleFaces() const;
 
-        //- Calculate map distribution
-        void calcMap() const;
+        //- Calculate map distribution and remote donor to local acceptor
+        //  addressing
+        void calcInterpolationMap() const;
 
 
         // Storage management
@@ -320,6 +330,9 @@ public:
 
                 //- Return map distribute tool
                 const mapDistribute& map() const;
+
+                //- Return remote donor to local acceptor addressing
+                const List<labelField>& remoteDonorToLocalAcceptorAddr() const;
 
 
             //- Return interpolation

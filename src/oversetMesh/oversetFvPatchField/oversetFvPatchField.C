@@ -118,7 +118,7 @@ void oversetFvPatchField<Type>::setAcceptorValues(Field<Type2>& f) const
     // Get acceptor values by interpolation
     Field<Type2> accValues = oversetPatch_.overset().interpolate(f);
 
-    // Ger acceptor addressing
+    // Get acceptor addressing
     const labelList& acceptors = oversetPatch_.overset().acceptorCells();
 
     // Check sizes

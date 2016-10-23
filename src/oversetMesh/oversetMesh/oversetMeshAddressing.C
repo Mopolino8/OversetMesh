@@ -214,7 +214,7 @@ void Foam::oversetMesh::calcGamma() const
     // Trigger the calculation of cell centres to avoid tangled parallel
     // communications in case the lazy evaluation mechanism is invoked in
     // GeometricField::evaluate() member function. Temporary solution.
-    // To-do: examine stack trace for fvMesh::makeC(), VV, 8/Feb/2015.
+    // To-do: examine stack trace for fvMesh::makeC(), VV, 8/Feb/2016.
     mesh().C();
 
     // Fluid cells indicator, marking only live cells
@@ -783,11 +783,11 @@ void Foam::oversetMesh::calcHoleFaces() const
 }
 
 
-void Foam::oversetMesh::calcMap() const
+void Foam::oversetMesh::calcInterpolationMap() const
 {
-    if (mapPtr_)
+    if (mapPtr_ || remoteDonorToLocalAcceptorAddrPtr_)
     {
-        FatalErrorIn("void oversetMesh::calcInterpolationAddressing() const")
+        FatalErrorIn("void oversetMesh::calcInterpolationMap() const")
             << "Fringe addressing already calculated"
             << abort(FatalError);
     }
@@ -815,6 +815,9 @@ void Foam::oversetMesh::calcMap() const
     //      single donor may be used by multiple acceptors on the same processor
     //    - While looping through donors, count how many donors I'm sending to
     //      each processor
+    //    - While I'm calculating the sending map, I will keep track of mapping
+    //      from local donor cell indices to actually sent indices. This will
+    //      allow me to easily create remoteDonorToLocalAcceptorAddressing
     // 2) Second, we need to count how many items my (local) processor is going
     //    to be receiving from all other processors
     // 3) Third, I need to create constructing map, which will be organized as
@@ -829,14 +832,19 @@ void Foam::oversetMesh::calcMap() const
     // Get the nDonorsToProcessorMap for my processor
     labelList& numberOfLocalDonorsToProcs =
         nDonorsToProcessorMap[Pstream::myProcNo()];
+
     // Create sending map and roughly initialize the capacity as 6 times the
     // number of donors for this processor (based on the assumption that all
     // data goes to a single processor and we have hexahedral cells). This
     // assumption should be fine considered the memory penalty of the CFD run
     // compared to overset assembly.
     // Note: hash set is used to send only unique donors as single donor can be
-    // used for multiple acceptors
+    // used for multiple acceptors.
     List<labelHashSet> sendMap(Pstream::nProcs());
+
+    // Create labelList containg donor indices which will be used to create
+    // remote donor to local acceptor addressing
+    labelList donorIDs(mesh_.nCells(), -1);
 
     // Enclosed in scope for readability
     {
@@ -870,6 +878,9 @@ void Foam::oversetMesh::calcMap() const
             const label donorCellI = curDonor.donorCell();
             const label acceptorProcIndex = curDonor.acceptorProcNo();
 
+            // Set donor index
+            donorIDs[donorCellI] = donorCellI;
+
             // Insert this master donor into the hash table for the processor
             // I'm sending data to
             if (sendMap[acceptorProcIndex].insert(donorCellI))
@@ -884,7 +895,13 @@ void Foam::oversetMesh::calcMap() const
 
             forAll (extDonors, eDonorCellI)
             {
-                if (sendMap[aceptorProcIndex].insert(extDonors[eDonorCellI]))
+                // Get index
+                const label extDonorI = extDonors[eDonorCellI];
+
+                // Set donor index for this extended donor
+                donorIDs[donorCellI] = extDonorI;
+
+                if (sendMap[aceptorProcIndex].insert(extDonorI)
                 {
                     ++numberOfLocalDonorsToProcs[acceptorProcIndex];
                 }
@@ -906,7 +923,7 @@ void Foam::oversetMesh::calcMap() const
     Pstream::scatterList(nDonorsToProcessorMap);
 
     // For my processor, I need to count how many items I'm going to be
-    // receiving from others. Note that the receive size is different to each
+    // receiving from others. Note that the receive size is different for each
     // processor (we are not collecting data in a global list as in e.g. GGI)
     label nReceives = 0;
     forAll (nDonorsToProcessorMap, procI)
@@ -957,6 +974,81 @@ void Foam::oversetMesh::calcMap() const
         constructDataMap
     );
 
+    // STAGE 4: create remoteDonorToLocalAcceptor addressing object
+
+    // Distribute local donor cell ID's using mapDistribute
+    mapPtr_->distribute(donorIDs);
+
+    // Sanity check whether all donorIDs that have been sent to me are valid
+    if (min(donorIDs) < 0)
+    {
+        FatalErrorIn("void oversetMesh::calcInterpolationMap() const")
+            << "Found invalid donor index after distribution." << nl
+            << "Something has seriously gone wrong..."
+            << abort(FatalError);
+    }
+
+    // Now we have all received donorIDs from all processors, combined in a
+    // single list. We know which part has come from which processor, and we
+    // need to disect this data in order to create a list (indexed by processor
+    // ID) of labelFields (indexed by cell index), which will eventually give us
+    // the index of donor in the received list (for a given donor processor ID
+    // and local donor index)
+    remoteDonorToLocalAcceptorAddrPtr_ = new List<labelField>(Pstream::nProcs());
+    List<labelField>& rdlaAddr = *remoteDonorToLocalAcceptorAddrPtr_;
+
+    // Each processor needs to know how many cells we have in all other
+    // processors
+    labelList procNCells(Pstream::nProcs()];
+    procNCells[Pstream::myProcNo()] = mesh_.nCells();
+
+    Pstream::gatherList(procNCells);
+    Pstream::scatterList(procNCells);
+
+    // Allocate storage and initialise to -1. Note that each processor stores
+    // nProcs fields of the size corresponding to local processor mesh size
+    // (nCells). This is a bit wasteful, but allows us efficient interpolation
+    forAll (rdlaAddr, procI)
+    {
+        rdlaAddr[procI].setSize(procNCells[procI], -1);
+    }
+
+    // Helper: starting processor index for list slicing
+    label startProcIndex = 0;
+
+    // Loop through processors
+    for (label procI = 0; procI < Pstream::nProcs(), ++procI)
+    {
+        // Get number of entries I have received from this processor
+        const label nCurProcRec ==
+            nDonorsToProcessorMap[procI][Pstream::myProcNo()];
+
+        // Get the corresponding subList
+        const labelList::subList procDonorIDs
+        (
+            donorIDs, // Original list
+            nCurProcRec, // Size of the data
+            startProcIndex // Start index
+        );
+
+        // Fill in necessary parts of the remote donor to local acceptor
+        // addressing
+        labelField& curAddr = rdlaAddr[procI];
+        forAll (procDonorIDs, i)
+        {
+            // Offset the index
+            label offsetI = i + startProcIndex;
+
+            // Store distributed donorID in the location
+            curAddr[procDonorIDs[i]] = offsetI;
+        }
+
+        // Increment the startProcIndex by number of receives from this
+        // processor
+        startProcIndex += nCurProcRec;
+    }
+
+
     // Force calculation of domain markup fields for post-processing
     // HJ, 9/Apr/2013
     oversetTypes();
@@ -987,6 +1079,7 @@ void Foam::oversetMesh::clearOut() const
     deleteDemandDrivenData(acceptorInternalFacesPtr_);
 
     deleteDemandDrivenData(mapPtr_);
+    deleteDemandDrivenData(remoteDonorToLocalAcceptorAddrPtr_);
 }
 
 
@@ -1172,10 +1265,22 @@ const Foam::mapDistribute& Foam::oversetMesh::map() const
 {
     if (!mapPtr_)
     {
-        calcMap();
+        calcInterpolationMap();
     }
 
     return *mapPtr_;
+}
+
+
+const Foam::labelListList&
+Foam::oversetMesh::remoteDonorToLocalAcceptorAddr() const
+{
+    if (!remoteDonorToLocalAcceptorAddrPtr_)
+    {
+        calcInterpolationMap();
+    }
+
+    return *remoteDonorToLocalAcceptorAddrPtr_;
 }
 
 

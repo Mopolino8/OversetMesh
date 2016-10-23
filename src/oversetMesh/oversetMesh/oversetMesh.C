@@ -87,6 +87,7 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
     localNeighbouringDonorsPtr_(NULL),
     localDonorAddrPtr_(NULL),
     mapPtr_(NULL),
+    remoteDonorToLocalAcceptorAddrPtr_(NULL),
 
     interpolationPtr_
     (
