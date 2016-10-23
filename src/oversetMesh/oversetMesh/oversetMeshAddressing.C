@@ -793,7 +793,10 @@ void Foam::oversetMesh::calcMap() const
     }
 
     // Create list containing number of donors my processor is sending to other
-    // processors. Note that for a serial run, this list is completely
+    // processors.
+    // Example: nDonorsToProcessorMap[2][5] = 123 will (after collection of
+    // data) mean that processor 2 sends 123 donor values to processor 5.
+    // Note that for a serial run, this list is completely
     // unnecessary, but I prefer writing this in a general way, where I don't
     // care about minor loss of efficiency for serial runs. VV, 21/Oct/2016.
     labelListList nDonorsToProcessorMap(Pstream::nProcs());
@@ -804,21 +807,28 @@ void Foam::oversetMesh::calcMap() const
     }
 
     // Algorithm:
-    // 1) First, we need to calculate the sending map:
+    // 1) First, we need to calculate the sending map, which tells me which
+    //    donor values I need to send to which processor:
     //    - Loop through all regions and then through all donors for that region
     //    - Mark all donors associated with donor/acceptor pair and see to which
     //      processor I need to send its data. Handle the possiblity that a
     //      single donor may be used by multiple acceptors on the same processor
     //    - While looping through donors, count how many donors I'm sending to
     //      each processor
-    // 2) Construct the map distribute object by providing sending map and
-    //    nDonorsToProcessorMap. Note that the map distribute object will
-    //    create its constructMap based on provided data
+    // 2) Second, we need to count how many items my (local) processor is going
+    //    to be receiving from all other processors
+    // 3) Third, I need to create constructing map, which will be organized as
+    //    follows:
+    //    - If processor N sends me M donor values, these values will be stored
+    //      in the receiving list from indices K to K + M - 1, where K is the
+    //      total number of donors received from previous processors (processors
+    //      I, where I < N).
+
+    // STAGE 1: calculation of sending map and receiving sizes
 
     // Get the nDonorsToProcessorMap for my processor
     labelList& numberOfLocalDonorsToProcs =
         nDonorsToProcessorMap[Pstream::myProcNo()];
-
     // Create sending map and roughly initialize the capacity as 6 times the
     // number of donors for this processor (based on the assumption that all
     // data goes to a single processor and we have hexahedral cells). This
@@ -882,16 +892,70 @@ void Foam::oversetMesh::calcMap() const
         } // End for all donors in this region
     } // End for all regions
 
+    // Create sending map from the List of hash sets
+    labelListList sendDataMap(Pstream::nProcs());
+    forAll (sendDataMap, procI)
+    {
+        sendDataMap[procI] = sendMap[procI].toc();
+    }
+
     // Gather/scatter number of donors going to each processor from each
     // processor so that all processors have all necessary information when
     // creating map distribute tool
     Pstream::gatherList(nDonorsToProcessorMap);
     Pstream::scatterList(nDonorsToProcessorMap);
 
-    // Create the map distribute object: given the sending map and
-    // nDonorsToProcessorMap, the class can calculate all the addressing needed
-    // to perform efficient overset interpolation in parallel
-    mapPtr_ = new mapDistributeOversetDonors(sendMap, nDonorsToProcessorMap);
+    // For my processor, I need to count how many items I'm going to be
+    // receiving from others. Note that the receive size is different to each
+    // processor (we are not collecting data in a global list as in e.g. GGI)
+    label nReceives = 0;
+    forAll (nDonorsToProcessorMap, procI)
+    {
+        nReceives += nDonorsToProcessorMap[procI][Pstream::myProcNo()].size();
+    }
+
+    // STAGE 2: calculation of construct map
+
+    // The construct map is simply an offset of the index by a number of values
+    // received by previous processors
+    labelListList constructDataMap(Pstream::nProcs());
+
+    // Counter for offset
+    label procOffset = 0;
+
+    forAll (constructDataMap, procI)
+    {
+        // Get receiving size from this processor
+        const label nReceivesFromCurProc =
+            nDonorsToProcessorMap[procI][Pstream::myProcNo()].size();
+
+        // Get current construct map
+        labelList& curConstructMap = constructDataMap[procI];
+
+        // Set the size of each list corresponding to number of received values
+        // from this processor
+        curConstructMap.setSize(nReceivesFromCurProc);
+
+        // Set mapping via simple offset
+        forAll (curConstructMap, receivedItemI)
+        {
+            curConstructMap[receivedItemI] = receivedItemI + procOffset;
+        }
+
+        // Increment the processor offset by the size received from this
+        // processor
+        procOffset += nReceivesFromCurProc;
+    }
+
+    // STAGE 3: create the map distribute object
+
+    // Create the map distribute object
+    mapPtr_ = new mapDistribute
+    (
+        nReceives,
+        sendDataMap,
+        constructDataMap
+    );
 
     // Force calculation of domain markup fields for post-processing
     // HJ, 9/Apr/2013
@@ -1104,7 +1168,7 @@ const Foam::labelList& Foam::oversetMesh::acceptorInternalFaces() const
 }
 
 
-const Foam::mapDistributeOversetDonors& Foam::oversetMesh::map() const
+const Foam::mapDistribute& Foam::oversetMesh::map() const
 {
     if (!mapPtr_)
     {

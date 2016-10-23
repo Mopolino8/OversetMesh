@@ -51,7 +51,7 @@ SourceFiles
 #include "oversetRegion.H"
 #include "oversetInterpolation.H"
 #include "fvMatrices.H"
-#include "mapDistributeOversetDonors.H"
+#include "mapDistribute.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -177,7 +177,7 @@ private:
                 //  runs, providing some penalty because of unnecessary
                 //  indirection. We don't care about efficiency in serial
                 //  runs for the moment. VV, 21/Oct/2016.
-                mutable mapDistributeOversetDonors* mapPtr_;
+                mutable mapDistribute* mapPtr_;
 
 
             //- Overset interpolation
@@ -319,7 +319,7 @@ public:
             // Interpolation addressing
 
                 //- Return map distribute tool
-                const mapDistributeOversetDonors& map() const;
+                const mapDistribute& map() const;
 
 
             //- Return interpolation
