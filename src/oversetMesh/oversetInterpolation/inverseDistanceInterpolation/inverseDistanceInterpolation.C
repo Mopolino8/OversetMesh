@@ -46,7 +46,7 @@ namespace Foam
 
 void Foam::inverseDistanceInterpolation::calcWeights() const
 {
-    if (localWeightsPtr_ || remoteWeightsPtr_)
+    if (weightsPtr_)
     {
         FatalErrorIn
         (
@@ -55,127 +55,71 @@ void Foam::inverseDistanceInterpolation::calcWeights() const
             << abort(FatalError);
     }
 
-    // Get list of local donors
-    const labelList& ld = overset().localDonors();
+    // Allocate necessary storage
+    weightsPtr_ = new ListScalarFieldField(oversetMesh().regions().size());
+    ListScalarFieldField& weights = *weightsPtr_;
 
-    // Get list of neighbouring donors (needed to set appropriate size of each
-    // bottom most list of weights - for all donors)
-    const labelListList& lnd = overset().localNeighbouringDonors();
-
-    // Get local donor addressing (local acceptor index for each local donor)
-    const labelList& ldAddr = overset().localDonorAddr();
-
-    // Get local acceptors and donors
-    const labelList& acceptorCells = overset().acceptorCells();
-
-    // Get necessary mesh data
-    const vectorField& CC = overset().mesh().cellCentres();
-
-    // Create a local weight field
-    localWeightsPtr_ = new ScalarFieldField(ld.size());
-    ScalarFieldField& localWeights = *localWeightsPtr_;
-
-    // Loop through local donors, setting the weights
-    forAll (ld, ldI)
+    // Loop through all overset regions
+    forAll (oversetMesh().regions(), regionI)
     {
-        // Set the size of this donor weight field (master donor (1) +
-        // neighbouring donors). Set the size and all values to 1.
-        localWeights.set
-        (
-            ldI,
-            new scalarField(1 + lnd[ldI].size(), 1)
-        );
+        // Get acceptors for this region
+        const donorAcceptorList& curAcceptors =
+            oversetMesh().regions()[regionI].acceptors();
 
-        // Get acceptor cell centre
-        const vector& accCC = CC[acceptorCells[ldAddr[ldI]]];
+        // Get weights for this region
+        ScalarFieldField& regionWeights = weights[regionI];
 
-        // Inverse distance interpolation: weights are defined as inverted
-        // distance from a given donor to the acceptor cell centre
-
-        // Get reference to current weight field for this acceptor
-        scalarField& curLocWeights = localWeights[ldI];
-
-        // Calculate master donor first
-        curLocWeights[0] /= mag(accCC - CC[ld[ldI]]) + SMALL;
-
-        // Calculate neighbouring donors next
-        const labelList& curNbrDonors = lnd[ldI];
-        forAll (curNbrDonors, nbrI)
+        // Loop through acceptors of this region
+        forAll (curAcceptors, aI)
         {
-            // Note nbrI + 1 index for subscripting because the first entry in
-            // weights corresponds to the master donor
-            curLocWeights[nbrI + 1] /=
-                mag(accCC - CC[curNbrDonors[nbrI]]) + SMALL;
-        }
+            // Get current donor/acceptor pair
+            const donorAcceptor& da = curAcceptors[aI];
 
-        // Renormalize the weight field
-        curLocWeights /= sum(curLocWeights);
-    }
+            // Get total number of donors for this acceptor
+            const label nDonors = 1 + da.extendedDonorCells().size();
 
-    // Handling remote donors for a parallel run
-    if (Pstream::parRun())
-    {
-        // Get remote donor addressing
-        const labelList& rd = overset().remoteDonors();
-        const labelListList& rnd = overset().remoteNeighbouringDonors();
-
-        // Create a global weights list for remote donor weights
-        remoteWeightsPtr_ = new ListScalarFieldField(Pstream::nProcs());
-        ListScalarFieldField& remoteWeights = *remoteWeightsPtr_;
-
-        // Get the corresponding acceptor cell centres for remote donors on this
-        // processor
-        const vectorField& procRemAccCC = remoteAccCC()[Pstream::myProcNo()];
-
-        // Set the size of the weight field for this processor
-        ScalarFieldField& myProcRemoteWeights =
-            remoteWeights[Pstream::myProcNo()];
-        myProcRemoteWeights.setSize(rd.size());
-
-        // Loop through remote donors and calculate weights
-        forAll (rd, rdI)
-        {
-            // Allocate the storage for this donor weight field (master donor
-            // (1) + neighbouring donors). Set the size and all values to 1.
-            myProcRemoteWeights.set
+            // Initialise weight field to one for donors of this acceptor
+            regionWeights.set
             (
-                rdI,
-                new scalarField(1 + rnd[rdI].size(), 1)
+                aI,
+                new scalarField
+                (
+                    nDonors,
+                    1
+                )
             );
 
+            // Get weights for this acceptor
+            scalarField& w = regionWeights[aI];
+
             // Get acceptor cell centre
-            const vector& accCC = procRemAccCC[rdI];
+            const point& accCC = da.acceptorPoint();
 
-            // Get reference to current weight field for this acceptor
-            scalarField& curRemWeights = myProcRemoteWeights[rdI];
-
-            // Calculate master donor first
-            curRemWeights[0] /= mag(accCC - CC[rd[rdI]]);
+            // Calculate master donor weight first
+            w[0] /= mag(accCC - da.donorPoint()) + SMALL;
 
             // Calculate neighbouring donors next
-            const labelList& curNbrDonors = rnd[rdI];
-            forAll (curNbrDonors, nbrI)
+            const donorAcceptor::DynamicPointList& nbrDonorPoints =
+                da.extendedDonorPoints();
+
+            forAll (nbrDonorPoints, nbrI)
             {
-                // Note nbrI + 1 index for subscripting because the first entry
-                // in weights corresponds to the master donor
-                curRemWeights[nbrI + 1] /= mag(accCC - CC[curNbrDonors[nbrI]]);
+                // Note nbrI + 1 for subscripting because the first entry in
+                // weights corresponds to the master donor
+                w[nbrI + 1] /= mag(accCC - nbrDonorPoints[nbrI]) + SMALL;
             }
 
-            // Renormalize the weight field
-            curRemWeights /= sum(curRemWeights);
-        }
+            // Normalise the weight field
+            w /= sum(w);
 
-        // Gather remote weights (no need to scatter since the data is needed
-        // only for the master processor).
-        Pstream::gatherList(remoteWeights);
-    }
+        } // End for all acceptors in this region
+    } // End for all regions
 }
 
 
 void Foam::inverseDistanceInterpolation::clearWeights() const
 {
-    deleteDemandDrivenData(localWeightsPtr_);
-    deleteDemandDrivenData(remoteWeightsPtr_);
+    deleteDemandDrivenData(weightsPtr_);
 }
 
 
@@ -188,8 +132,7 @@ Foam::inverseDistanceInterpolation::inverseDistanceInterpolation
 )
 :
     oversetInterpolation(overset, dict),
-    localWeightsPtr_(NULL),
-    remoteWeightsPtr_(NULL)
+    weightsPtr_(NULL),
 {}
 
 
@@ -203,54 +146,12 @@ Foam::inverseDistanceInterpolation::~inverseDistanceInterpolation()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::oversetInterpolation::ScalarFieldField&
-Foam::inverseDistanceInterpolation::localWeights() const
+const Foam::oversetInterpolation::ListScalarFieldField&
+Foam::inverseDistanceInterpolation::weights() const
 {
-    if (!localWeightsPtr_)
+    if (!weightsPtr_)
     {
         calcWeights();
-    }
-
-    return *localWeightsPtr_;
-}
-
-
-const Foam::oversetInterpolation::ListScalarFieldField&
-Foam::inverseDistanceInterpolation::remoteWeights() const
-{
-    // We cannot calculate the remoteWeights using usual lazy evaluation
-    // mechanism since the data only exists on the master processor. Add
-    // additional guards, VV, 8/Feb/2016.
-    if (!Pstream::parRun())
-    {
-        FatalErrorIn
-        (
-            "const oversetInterpolation::ListScalarFieldField&\n"
-            "inverseDistanceInterpolation::remoteWeights() const"
-        )   << "Attempted to calculate remoteWeights for a serial run."
-            << "This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!Pstream::master())
-    {
-        FatalErrorIn
-        (
-            "const oversetInterpolation::ListScalarFieldField&\n"
-            "inverseDistanceInterpolation::remoteWeights() const"
-        )   << "Attempted to calculate remoteWeights for a slave processor. "
-            << "This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!remoteWeightsPtr_)
-    {
-        FatalErrorIn
-        (
-            "const oversetInterpolation::ListScalarFieldField&\n"
-            "inverseDistanceInterpolation::remoteWeights() const"
-        )   << "Calculation of remoteWeights not possible because the data \n"
-            << "exists only on the master processor. Please calculate \n"
-            << "localWeights first (call .localWeights() member function)."
-            << abort(FatalError);
     }
 
     return *remoteWeightsPtr_;
@@ -262,9 +163,6 @@ void Foam::inverseDistanceInterpolation::update() const
     Info<< "inverseDistanceInterpolation::update()" << endl;
 
     clearWeights();
-
-    // Clear remote acceptor cell centres in the base class
-    oversetInterpolation::update();
 }
 
 

@@ -60,20 +60,11 @@ class averageValueInterpolation
 
         // Demand-driven data
 
-            // Note: for each master donor (acceptor), we have a list of scalars
+            //- Weights for all donors of all acceptors in all regions
+            // Note: for each acceptor in each region, we have a list of scalars
             // for all donors: master + neighbouring. Master weight is the first
             // [index 0], followed by neighbouring weights.
-
-            //- Weights for local donor/acceptor pairs (all donors and acceptor
-            //  are on the same processor)
-            mutable ScalarFieldField* localWeightsPtr_;
-
-            // Master processor data (only accessible on master processor)
-
-                //- Weights for remote donor/acceptor pairs (all donors are on a
-                //  remote processor). List for all processors is stored on
-                //  master processor (trading off memory for CPU performance)
-                mutable ListScalarFieldField* remoteWeightsPtr_;
+            mutable ListScalarFieldField* weightsPtr_;
 
 
     // Private Member Functions
@@ -85,11 +76,13 @@ class averageValueInterpolation
         void operator=(const averageValueInterpolation&);
 
 
-        //- Calculate weights
-        void calcWeights() const;
+        // Functions for calculating/clearing weights
 
-        //- Clear weights
-        void clearWeights() const;
+            //- Calculate weights
+            void calcWeights() const;
+
+            //- Clear weights
+            void clearWeights() const;
 
 
 public:
@@ -115,11 +108,11 @@ public:
 
     // Member Functions
 
-        //- Return local donor weights
-        virtual const ScalarFieldField& localWeights() const;
+        // Access
 
-        //- Return remote donor weights
-        virtual const ListScalarFieldField& remoteWeights() const;
+            //- Return weights
+            virtual const ListScalarFieldField& weights() const;
+
 
         //- Update the interpolation
         virtual void update() const;

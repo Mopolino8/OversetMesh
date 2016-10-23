@@ -46,7 +46,7 @@ namespace Foam
 
 void Foam::averageValueInterpolation::calcWeights() const
 {
-    if (localWeightsPtr_ || remoteWeightsPtr_)
+    if (weightsPtr_)
     {
         FatalErrorIn
         (
@@ -55,82 +55,46 @@ void Foam::averageValueInterpolation::calcWeights() const
             << abort(FatalError);
     }
 
-    // Get list of local donors
-    const labelList& ld = overset().localDonors();
+    // Allocate necessary storage
+    weightsPtr_ = new ListScalarFieldField(oversetMesh().regions().size());
+    ListScalarFieldField& weights = *weightsPtr_;
 
-    // Get list of neighbouring donors (needed to set appropriate size of each
-    // bottom most list of weights - for all donors)
-    const labelListList& lnd = overset().localNeighbouringDonors();
-
-    // Create a local weight field
-    localWeightsPtr_ = new ScalarFieldField(ld.size());
-    ScalarFieldField& localWeights = *localWeightsPtr_;
-
-    // Loop through local donors, setting the weights
-    forAll (ld, ldI)
+    // Loop through all overset regions
+    forAll (oversetMesh().regions(), regionI)
     {
-        // Get number of donors (master donor (1) + neighbouring donors)
-        const label nDonors = 1 + lnd[ldI].size();
+        // Get acceptors for this region
+        const donorAcceptorList& curAcceptors =
+            oversetMesh().regions()[regionI].acceptors();
 
-        // Calculate the weight field: each donor has the same influence as the
-        // other (1/nDonors)
-        localWeights.set
-        (
-            ldI,
-            new scalarField
-            (
-                nDonors,
-                1/scalar(nDonors)
-            )
-        );
-    }
+        // Get weights for this region
+        ScalarFieldField& regionWeights = weights[regionI];
 
-    // Handling remote donors for a parallel run
-    if (Pstream::parRun())
-    {
-        // Get remote donor addressing
-        const labelList& rd = overset().remoteDonors();
-        const labelListList& rnd = overset().remoteNeighbouringDonors();
-
-        // Create a global weights list for remote donor weights
-        remoteWeightsPtr_ = new ListScalarFieldField(Pstream::nProcs());
-        ListScalarFieldField& remoteWeights = *remoteWeightsPtr_;
-
-        // Set the size of the weight field for this processor
-        ScalarFieldField& myProcRemoteWeights =
-            remoteWeights[Pstream::myProcNo()];
-        myProcRemoteWeights.setSize(rd.size());
-
-        // Loop through remote donors and calculate weights
-        forAll (rd, rdI)
+        // Loop through acceptors of this region
+        forAll (curAcceptors, aI)
         {
-            // Get number of donors (master donor (1) + neighbouring donors)
-            const label nDonors = 1 + rnd[rdI].size();
+            // Get total number of donors for this acceptor
+            const label nDonors =
+                1 + curAcceptors[aI].extendedDonorCells().size();
 
-            // Calculate the weight field: each donor has the same influence ast
-            // the others (1/nDonors)
-            myProcRemoteWeights.set
+            // Calculate weight field as 1 divided by number of donors
+            regionWeights.set
             (
-                rdI,
+                aI,
                 new scalarField
                 (
                     nDonors,
                     1/scalar(nDonors)
                 )
             );
-        }
 
-        // Gather remote weights (no need to scatter since the data is needed
-        // only for the master processor).
-        Pstream::gatherList(remoteWeights);
-    }
+        } // End for all acceptors in this region
+    } // End for all regions
 }
 
 
 void Foam::averageValueInterpolation::clearWeights() const
 {
-    deleteDemandDrivenData(localWeightsPtr_);
-    deleteDemandDrivenData(remoteWeightsPtr_);
+    deleteDemandDrivenData(weightsPtr_);
 }
 
 
@@ -143,8 +107,7 @@ Foam::averageValueInterpolation::averageValueInterpolation
 )
 :
     oversetInterpolation(overset, dict),
-    localWeightsPtr_(NULL),
-    remoteWeightsPtr_(NULL)
+    weightsPtr_(NULL),
 {}
 
 
@@ -158,54 +121,12 @@ Foam::averageValueInterpolation::~averageValueInterpolation()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-const Foam::oversetInterpolation::ScalarFieldField&
-Foam::averageValueInterpolation::localWeights() const
+const Foam::oversetInterpolation::ListScalarFieldField&
+Foam::averageValueInterpolation::weights() const
 {
-    if (!localWeightsPtr_)
+    if (!weightsPtr_)
     {
         calcWeights();
-    }
-
-    return *localWeightsPtr_;
-}
-
-
-const Foam::oversetInterpolation::ListScalarFieldField&
-Foam::averageValueInterpolation::remoteWeights() const
-{
-    // We cannot calculate the remoteWeights using usual lazy evaluation
-    // mechanism since the data only exists on the master processor. Add
-    // additional guards, VV, 8/Feb/2016.
-    if (!Pstream::parRun())
-    {
-        FatalErrorIn
-        (
-            "const oversetInterpolation::ListScalarFieldField&\n"
-            "averageValueInterpolation::remoteWeights() const"
-        )   << "Attempted to calculate remoteWeights for a serial run."
-            << "This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!Pstream::master())
-    {
-        FatalErrorIn
-        (
-            "const oversetInterpolation::ListScalarFieldField&\n"
-            "averageValueInterpolation::remoteWeights() const"
-        )   << "Attempted to calculate remoteWeights for a slave processor. "
-            << "This is not allowed."
-            << abort(FatalError);
-    }
-    else if (!remoteWeightsPtr_)
-    {
-        FatalErrorIn
-        (
-            "const oversetInterpolation::ListScalarFieldField&\n"
-            "averageValueInterpolation::remoteWeights() const"
-        )   << "Calculation of remoteWeights not possible because the data \n"
-            << "exists only on the master processor. Please calculate \n"
-            << "localWeights first (call .localWeights() member function)."
-            << abort(FatalError);
     }
 
     return *remoteWeightsPtr_;
@@ -217,9 +138,6 @@ void Foam::averageValueInterpolation::update() const
     Info<< "averageValueInterpolation::update()" << endl;
 
     clearWeights();
-
-    // Clear remote acceptor cell centres in the base class
-    oversetInterpolation::update();
 }
 
 
