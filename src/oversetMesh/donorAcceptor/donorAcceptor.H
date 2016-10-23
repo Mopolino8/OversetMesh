@@ -68,6 +68,15 @@ Ostream& operator<<(Ostream&, const donorAcceptor&);
 
 class donorAcceptor
 {
+public:
+
+    // Public data types
+    typedef DynamicList<label, 10> DynamicLabelList;
+    typedef DynamicList<point, 10> DynamicPointList;
+
+
+private:
+
     // Private data
 
         // Acceptor side
@@ -94,11 +103,11 @@ class donorAcceptor
             point donorPoint_;
 
             //- Extended donor cell numbers
-            DynamicList<label, 10> extendedDonorCells_;
+            DynamicLabelList extendedDonorCells_;
 
             //- Extended donor points, used to construct weights in different
             //  overset interpolation schemes
-            DynamicList<point, 10> extendedDonorPoints_;
+            DynamicPointList extendedDonorPoints_;
 
             // Note that the processor number is the same for all extended
             // donors
@@ -227,6 +236,18 @@ public:
                 {
                     return vector::max;
                 }
+            }
+
+            //- Return extended donor cell numbers
+            const DynamicLabelList& extendedDonorCells() const
+            {
+                return extendedDonorCells_;
+            }
+
+            //- Return extended donor cell centres
+            const DynamicPointList& extendedDonorPoints() const
+            {
+                return extendedDonorPoints_;
             }
 
             //- Return donor to acceptor distance

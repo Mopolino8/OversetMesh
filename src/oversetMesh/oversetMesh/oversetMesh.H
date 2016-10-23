@@ -179,12 +179,6 @@ private:
                 //  runs for the moment. VV, 21/Oct/2016.
                 mutable mapDistributeOversetDonors* mapPtr_;
 
-                //- List containing number of donors my processor is sending to
-                //  other processors.
-                //  Example: nDonorsToProcessorMap[2][5] = 123 means that
-                //  processor 2 sends 123 donors to processor 5
-                mutable labelListList* nDonorsToProcessorMapPtr_;
-
 
             //- Overset interpolation
             autoPtr<oversetInterpolation> interpolationPtr_;
@@ -207,37 +201,14 @@ private:
         //- Calculate hole faces
         void calcHoleFaces() const;
 
-        //- Calculate interpolation addressing for serial and parallel runs
-        void calcInterpolationAddressing() const;
+        //- Calculate map distribution
+        void calcMap() const;
 
 
         // Storage management
 
             //- Clear all demand-driven data
             void clearOut() const;
-
-
-        // Helper functions
-
-            //- Recursive function that inserts eligible donor cell neighbours
-            //  in a hash set. Used for makring local and remote neighbouring
-            //  donors.
-            //  Parameters:
-            //  nbrCells - neighbouring cells of a cell (based on level)
-            //  cellCells - passing as a parameter for minor optimisation
-            //  donorMask - mask for eligible donors (holes and acceptors
-            //      excluded)
-            //  extendedNeighbouringDonors - HashSet containing labels of
-            //      extended neighbours
-            //  curLevel - current level used for recursion control
-            void markNeighbouringDonors
-            (
-                const labelList& nbrCells,
-                const labelListList& cellCells,
-                const boolList& donorMask,
-                labelHashSet& extendedNeighbouringDonors,
-                label curLevel
-            ) const;
 
 
 public:
@@ -349,9 +320,6 @@ public:
 
                 //- Return map distribute tool
                 const mapDistributeOversetDonors& map() const;
-
-                //- Return number of donors to processor map
-                const labelListList& nDonorsToProcessorMap() const;
 
 
             //- Return interpolation
