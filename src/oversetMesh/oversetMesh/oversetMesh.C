@@ -83,9 +83,6 @@ Foam::oversetMesh::oversetMesh(const fvMesh& mesh)
     holeInternalFacesPtr_(NULL),
     acceptorInternalFacesPtr_(NULL),
 
-    localDonorsPtr_(NULL),
-    localNeighbouringDonorsPtr_(NULL),
-    localDonorAddrPtr_(NULL),
     mapPtr_(NULL),
     remoteDonorToLocalAcceptorAddrPtr_(NULL),
 

@@ -137,7 +137,8 @@ public:
 
     // Destructor
 
-        virtual ~oversetInterpolation();
+        virtual ~oversetInterpolation()
+        {}
 
 
     // Member Functions

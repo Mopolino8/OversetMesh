@@ -56,15 +56,15 @@ void Foam::injectionInterpolation::calcWeights() const
     }
 
     // Allocate necessary storage
-    weightsPtr_ = new ListScalarFieldField(oversetMesh().regions().size());
+    weightsPtr_ = new ListScalarFieldField(overset().regions().size());
     ListScalarFieldField& weights = *weightsPtr_;
 
     // Loop through all overset regions
-    forAll (oversetMesh().regions(), regionI)
+    forAll (overset().regions(), regionI)
     {
         // Get acceptors for this region
         const donorAcceptorList& curAcceptors =
-            oversetMesh().regions()[regionI].acceptors();
+            overset().regions()[regionI].acceptors();
 
         // Get weights for this region
         ScalarFieldField& regionWeights = weights[regionI];
@@ -110,7 +110,7 @@ Foam::injectionInterpolation::injectionInterpolation
 )
 :
     oversetInterpolation(overset, dict),
-    weightsPtr_(NULL),
+    weightsPtr_(NULL)
 {}
 
 
@@ -132,7 +132,7 @@ Foam::injectionInterpolation::weights() const
         calcWeights();
     }
 
-    return *remoteWeightsPtr_;
+    return *weightsPtr_;
 }
 
 

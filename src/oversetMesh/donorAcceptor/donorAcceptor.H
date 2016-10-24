@@ -42,6 +42,9 @@ Contributor
 
 #include "label.H"
 #include "point.H"
+#include "DynamicList.H"
+#include "boolList.H"
+#include "vectorField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -148,8 +151,8 @@ public:
             donorCell_(readLabel(is)),
             donorProcNo_(readLabel(is)),
             donorPoint_(is),
-            extendedDonorCells(is),
-            extendedDonorPoints(is)
+            extendedDonorCells_(is),
+            extendedDonorPoints_(is)
         {}
 
         //- Copy constructor - default
@@ -302,8 +305,8 @@ public:
 
                     if (eligibleDonors[nbrCellI])
                     {
-                        extendedDonorCells_.append[nbrCellI];
-                        extendedDonorPoints_.append[cellCentres[nbrCellI]];
+                        extendedDonorCells_.append(nbrCellI);
+                        extendedDonorPoints_.append(cellCentres[nbrCellI]);
                     }
                 }
 
@@ -315,7 +318,7 @@ public:
             //- Copy extended donors from another candidate donor
             void setExtendedDonors(const donorAcceptor& rd)
             {
-                extendedDonorCells_ = rd_.extendedDonorCells_;
+                extendedDonorCells_ = rd.extendedDonorCells_;
                 extendedDonorPoints_ = rd.extendedDonorPoints_;
             }
 

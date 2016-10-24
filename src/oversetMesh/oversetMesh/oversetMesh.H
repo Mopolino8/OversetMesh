@@ -186,7 +186,7 @@ private:
                 //  Basically, you give me (possibly remote) donor processor
                 //  number and donor cell index, I give you the index in the
                 //  received list
-                mutable List<labelField>& remoteDonorToLocalAcceptorAddrPtr_;
+                mutable List<labelField>* remoteDonorToLocalAcceptorAddrPtr_;
 
 
             //- Overset interpolation

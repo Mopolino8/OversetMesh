@@ -603,7 +603,7 @@ void Foam::oversetRegion::calcDonorAcceptorCells() const
 
                         // Set extended donors by going through
                         // neigbours of currently set "best" donor
-                        curDA[daI].setExtendedDonors
+                        localDA[daI].setExtendedDonors
                         (
                             eligibleDonorMask,
                             cCells,

@@ -68,7 +68,8 @@ void Foam::oversetMesh::interpolate
     // Get remote donor to local acceptor map. Allows easy indexing of donor
     // that came from a (possibly) remote processor via its processor number and
     // cell number.
-    const List<labelField>& remoteDAAddressing = remoteDonorToLocalAcceptorAddr();
+    const List<labelField>& remoteDAAddressing =
+        remoteDonorToLocalAcceptorAddr();
 
     // Get interpolation weights for all donors for a given local acceptor in a
     // given region
@@ -82,7 +83,7 @@ void Foam::oversetMesh::interpolate
         const donorAcceptorList& curAcceptors = regions_[regionI].acceptors();
 
         // Get weights for this region
-        const overseInterpolation::ScalarFieldField& regionWeights =
+        const oversetInterpolation::ScalarFieldField& regionWeights =
             weights[regionI];
 
         // Loop through all acceptors of this region
@@ -90,7 +91,7 @@ void Foam::oversetMesh::interpolate
         {
             // Get necessary acceptor information
             const donorAcceptor& curDA = curAcceptors[aI];
-            const label accceptorCellI = curDA.acceptorCell();
+            const label acceptorCellI = curDA.acceptorCell();
 
             // Get necessary donor information
             const label donorCellI = curDA.donorCell();
