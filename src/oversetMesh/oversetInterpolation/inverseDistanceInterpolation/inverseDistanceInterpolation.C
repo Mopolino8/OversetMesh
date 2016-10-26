@@ -68,6 +68,7 @@ void Foam::inverseDistanceInterpolation::calcWeights() const
 
         // Get weights for this region
         ScalarFieldField& regionWeights = weights[regionI];
+        regionWeights.setSize(curAcceptors.size());
 
         // Loop through acceptors of this region
         forAll (curAcceptors, aI)
@@ -85,7 +86,7 @@ void Foam::inverseDistanceInterpolation::calcWeights() const
                 new scalarField
                 (
                     nDonors,
-                    1
+                    1.0
                 )
             );
 

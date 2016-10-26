@@ -68,6 +68,7 @@ void Foam::injectionInterpolation::calcWeights() const
 
         // Get weights for this region
         ScalarFieldField& regionWeights = weights[regionI];
+        regionWeights.setSize(curAcceptors.size());
 
         // Loop through acceptors of this region
         forAll (curAcceptors, aI)

@@ -76,6 +76,10 @@ void Foam::oversetMesh::interpolate
     const oversetInterpolation::ListScalarFieldField& weights =
         interpolation().weights();
 
+    // Note: accF field indexed by number of acceptors (region-wise
+    // incremental, see oversetMesh::calcCellClassification() for details)
+    label aI = 0;
+
     // Loop through all regions to account for all acceptors
     forAll (regions_, regionI)
     {
@@ -87,30 +91,31 @@ void Foam::oversetMesh::interpolate
             weights[regionI];
 
         // Loop through all acceptors of this region
-        forAll (curAcceptors, aI)
+        forAll (curAcceptors, regionAccI)
         {
             // Get necessary acceptor information
-            const donorAcceptor& curDA = curAcceptors[aI];
-            const label acceptorCellI = curDA.acceptorCell();
+            const donorAcceptor& curDA = curAcceptors[regionAccI];
 
             // Get necessary donor information
             const label donorCellI = curDA.donorCell();
 
             // Get weights for this acceptor
-            const scalarField& w = regionWeights[aI];
+            const scalarField& w = regionWeights[regionAccI];
 
             // Get remote donor to local acceptor addressing for this donor
             // processor. Note: it is assumed that all donors for an acceptor
-            // come from the same processor (although it can be remote processor)
+            // come from the same processor (though it can be remote processor)
             const labelField& donorProcAddr =
                 remoteDAAddressing[curDA.donorProcNo()];
 
             // Combine donor contributions for this acceptor
-            accF[acceptorCellI] = pTraits<Type>::zero;
+            // Note that accF is addressed by aI instead of acceptor cell
+            // indices. See oversetMesh::calcCellClassification for details
+            accF[aI] = pTraits<Type>::zero;
 
             // Master donor contribution (first entry of weights corresponds to
             // the weight for master donor)
-            accF[acceptorCellI] += w[0]*donorField[donorProcAddr[donorCellI]];
+            accF[aI] += w[0]*donorField[donorProcAddr[donorCellI]];
 
             // Neighbouring donor contributions
             const donorAcceptor::DynamicLabelList& nbrDonors =
@@ -123,9 +128,12 @@ void Foam::oversetMesh::interpolate
 
                 // Note indexing weights with + 1 offset since the first entry
                 // is for the master donor and is already accounted for
-                accF[acceptorCellI] += w[nbrDonorI + 1]
+                accF[aI] += w[nbrDonorI + 1]
                    *donorField[donorProcAddr[nbrDonorCellI]];
             }
+
+            // Increment acceptor index
+            ++aI;
         }
     }
 }

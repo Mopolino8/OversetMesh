@@ -803,7 +803,7 @@ void Foam::oversetMesh::calcInterpolationMap() const
 
     forAll (nDonorsToProcessorMap, procI)
     {
-        nDonorsToProcessorMap[procI].setSize(Pstream::nProcs());
+        nDonorsToProcessorMap[procI].setSize(Pstream::nProcs(), 0);
     }
 
     // Algorithm:
@@ -899,7 +899,7 @@ void Foam::oversetMesh::calcInterpolationMap() const
                 const label extDonorI = extDonors[eDonorCellI];
 
                 // Set donor index for this extended donor
-                donorIDs[donorCellI] = extDonorI;
+                donorIDs[extDonorI] = extDonorI;
 
                 if (sendMap[acceptorProcIndex].insert(extDonorI))
                 {
