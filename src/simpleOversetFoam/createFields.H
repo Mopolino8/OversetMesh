@@ -28,10 +28,11 @@
 
 #   include "createPhi.H"
 
-
+    // Set reference cell taking into account whether implicit or explicit
+    // overset aglorithm is used for field p.
     label pRefCell = 0;
     scalar pRefValue = 0.0;
-    setRefCell(p, simple.dict(), pRefCell, pRefValue);
+    om.setRefCell(p, simple.dict(), pRefCell, pRefValue);
 
     mesh.schemesDict().setFluxRequired(p.name());
 
@@ -43,7 +44,7 @@
         incompressible::RASModel::New(U, phi, laminarTransport)
     );
 
-    // Create 1/A field for easier overset fringe update
+    Info<< "Reading field rAU if present\n" << endl;
     volScalarField rAU
     (
         IOobject
@@ -58,5 +59,5 @@
         dimensionedScalar("dt", dimTime, 1.0),
         zeroGradientFvPatchScalarField::typeName
     );
-    oversetFvPatchScalarField::setCoupledFringe(rAU);
 
+#   include "writeOversetMasks.H"

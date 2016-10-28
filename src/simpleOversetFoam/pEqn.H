@@ -1,13 +1,14 @@
+{
     p.boundaryField().updateCoeffs();
 
     rAU = 1.0/UEqn().A();
-    rAU.correctBoundaryConditions(); // Overset update
+    oversetFvPatchScalarField::oversetInterpolate(rAU); // Overset update
 
     U = rAU*UEqn().H();
-    U.correctBoundaryConditions(); // Overset update
+    oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
 
     UEqn.clear();
-    phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
+    phi = (fvc::interpolate(U) & mesh.Sf());
 
     // Adjust overset fluxes
     oversetAdjustPhi(phi, U); // Fringe flux adjustment
@@ -33,6 +34,9 @@
         {
             phi -= pEqn.flux();
         }
+
+        // Perform overset interpolation (after flux reconstruction)
+        oversetFvPatchScalarField::oversetInterpolate(p);
     }
 
 #   include "oversetContinuityErrs.H"
@@ -43,3 +47,8 @@
     // Momentum corrector
     U -= rAU*fvc::grad(p);
     U.correctBoundaryConditions();
+    oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
+    // Note: if implicit fringe is switched on, we are doing the interpolation
+    // twice (once in correctBoundaryConditions and once in oversetInterpolate)
+    // Reorganize. VV, 4/Oct/2016.
+}

@@ -47,8 +47,10 @@
     );
 
 
+    // Set reference cell taking into account whether implicit or explicit
+    // overset algorithm is used for field p.
     label pRefCell = 0;
     scalar pRefValue = 0.0;
-    setRefCell(p, simple.dict(), pRefCell, pRefValue);
+    om.setRefCell(p, simple.dict(), pRefCell, pRefValue);
 
     mesh.schemesDict().setFluxRequired(p.name());

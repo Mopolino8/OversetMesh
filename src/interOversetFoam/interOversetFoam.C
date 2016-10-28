@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
 
 #   include "readGravitationalAcceleration.H"
 #   include "initContinuityErrs.H"
-#   include "createFields.H"
 #   include "createOversetMasks.H"
+#   include "createFields.H"
 #   include "createTimeControls.H"
 #   include "correctPhi.H"
 #   include "CourantNo.H"

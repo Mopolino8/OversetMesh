@@ -37,6 +37,7 @@ Author
 #include "simpleControl.H"
 
 #include "oversetMesh.H"
+#include "oversetFvPatchFields.H"
 #include "oversetAdjustPhi.H"
 #include "globalOversetAdjustPhi.H"
 
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
     // Do correctors over the complete set
     while (simple.correctNonOrthogonal())
     {
-        phi = faceOversetMask*(linearInterpolate(U) & mesh.Sf());
+        phi = (linearInterpolate(U) & mesh.Sf());
 
         // Adjust overset fluxes
         oversetAdjustPhi(phi, U); // Fringe flux adjustment
@@ -108,6 +109,9 @@ int main(int argc, char *argv[])
         );
         divFlux.write();
 
+        // Perform overset interpolation (after flux reconstruction)
+        oversetFvPatchScalarField::oversetInterpolate(p);
+
         if (!simple.finalNonOrthogonalIter())
         {
             p.relax();
@@ -134,6 +138,10 @@ int main(int argc, char *argv[])
 
         U = fvc::reconstruct(phi);
         U.correctBoundaryConditions();
+        oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
+        // Note: if implicit fringe is switched on, we are doing the
+        // interpolation twice (once in correctBoundaryConditions and once
+        // in oversetInterpolate). Reorganize. VV, 4/Oct/2016.
 
         Info<< "Interpolated U error = "
             << (
@@ -226,6 +234,10 @@ int main(int argc, char *argv[])
 
             p.internalField() = e - 0.5*magSqr(U.internalField());
             p.correctBoundaryConditions();
+            oversetFvPatchScalarField::oversetInterpolate(p); // Overset update
+            // Note: if implicit fringe is switched on, we are doing the
+            // interpolation twice (once in correctBoundaryConditions and once
+            // in oversetInterpolate). Reorganize. VV, 4/Oct/2016.
         }
         else
         {

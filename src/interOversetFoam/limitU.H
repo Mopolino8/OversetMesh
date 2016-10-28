@@ -15,6 +15,11 @@
           + pos(magU.internalField() - limitMagU)*
             limitMagU/(magU.internalField() + SMALL);
         U.correctBoundaryConditions();
+        oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
+        // Note: if implicit fringe is switched on, we are doing the
+        // interpolation twice (once in correctBoundaryConditions and once in
+        // oversetInterpolate). Reorganize. VV, 4/Oct/2016.
+
         Info << " ...limiting" << endl;
     }
     else

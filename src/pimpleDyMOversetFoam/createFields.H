@@ -29,8 +29,8 @@
 
 #   include "createPhi.H"
 
-    // Set reference cell taking into account whether implicit or explicit overset
-    // aglorithm is used for field p.
+    // Set reference cell taking into account whether implicit or explicit
+    // overset aglorithm is used for field p.
     const oversetMesh& om = oversetMesh::New(mesh);
     label pRefCell = 0;
     scalar pRefValue = 0.0;

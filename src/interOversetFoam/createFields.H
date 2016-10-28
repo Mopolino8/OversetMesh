@@ -100,10 +100,11 @@
         pd + rho*gh
     );
 
-
+    // Set reference cell taking into account whether implicit or explicit
+    // overset aglorithm is used for field p.
     label pRefCell = 0;
     scalar pRefValue = 0.0;
-    setRefCell(pd, pimple.dict(), pRefCell, pRefValue);
+    om.setRefCell(p, pimple.dict(), pRefCell, pRefValue);
 
     mesh.schemesDict().setFluxRequired(pd.name());
 
@@ -131,4 +132,5 @@
         runTime.deltaT()/rho1,
         zeroGradientFvPatchScalarField::typeName
     );
-    oversetFvPatchScalarField::setCoupledFringe(rAU);
+
+#   include "writeOversetMasks.H"

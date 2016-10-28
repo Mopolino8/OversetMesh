@@ -1,27 +1,28 @@
 {
+    pd.boundaryField().updateCoeffs();
+
     rAU = 1.0/UEqn.A();
-    rAU.correctBoundaryConditions(); // Overset update
+    oversetFvPatchScalarField::oversetInterpolate(rAU); // Overset update
     surfaceScalarField rAUf = fvc::interpolate(rAU);
 
     U = rAU*UEqn.H();
-    U.correctBoundaryConditions(); // Overset update
+    oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
 
     surfaceScalarField phiU
     (
         "phiU",
-        faceOversetMask*(fvc::interpolate(U) & mesh.Sf())
+        fvc::interpolate(U) & mesh.Sf()
     );
+
+    phi = phiU
+      + (
+            fvc::interpolate(interface.sigmaK())*fvc::snGrad(alpha1)
+          - ghf*fvc::snGrad(rho)
+        )*rAUf*mesh.magSf();
 
     // Adjust overset fluxes
     oversetAdjustPhi(phi, U); // Fringe flux adjustment
     globalOversetAdjustPhi(phi, U, p); // Global flux adjustment
-
-    phi = phiU
-      + faceOversetMask*
-        (
-            fvc::interpolate(interface.sigmaK())*fvc::snGrad(alpha1)
-          - ghf*fvc::snGrad(rho)
-        )*rAUf*mesh.magSf();
 
     while (pimple.correctNonOrthogonal())
     {
@@ -44,8 +45,21 @@
         {
             phi -= pdEqn.flux();
         }
+
+        // Perform overset interpolation (after flux reconstruction)
+        oversetFvPatchScalarField::oversetInterpolate(p);
+    }
+
+    // Explicitly relax pressure for momentum corrector
+    if (!pimple.finalIter())
+    {
+        p.relax();
     }
 
     U += rAU*fvc::reconstruct((phi - phiU)/rAUf);
     U.correctBoundaryConditions();
+    oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
+    // Note: if implicit fringe is switched on, we are doing the interpolation
+    // twice (once in correctBoundaryConditions and once in oversetInterpolate)
+    // Reorganize. VV, 4/Oct/2016.
 }

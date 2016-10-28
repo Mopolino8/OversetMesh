@@ -100,11 +100,13 @@ int main(int argc, char *argv[])
 
         while (piso.correct())
         {
+            p.boundaryField().updateCoeffs();
+
             rAU = 1.0/UEqn.A();
-            rAU.correctBoundaryConditions(); // Overset update
+            oversetFvPatchScalarField::oversetInterpolate(rAU); // Overset update
 
             U = rAU*UEqn.H();
-            U.correctBoundaryConditions(); // Overset update
+            oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
 
             phi = fvc::interpolate(U) & mesh.Sf();
 
@@ -132,12 +134,19 @@ int main(int argc, char *argv[])
                 {
                     phi -= pEqn.flux();
                 }
+
+                // Perform overset interpolation (after flux reconstruction)
+                oversetFvPatchScalarField::oversetInterpolate(p);
             }
 
 #           include "oversetContinuityErrs.H"
 
             U -= rAU*fvc::grad(p);
             U.correctBoundaryConditions();
+            oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
+            // Note: if implicit fringe is switched on, we are doing the
+            // interpolation twice (once in correctBoundaryConditions and once
+            // in oversetInterpolate). Reorganize. VV, 4/Oct/2016.
 
             // Make the fluxes relative to the mesh motion
             fvc::makeRelative(phi, U);

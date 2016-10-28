@@ -57,4 +57,8 @@
 
     // Parallel update in snGrad.  HJ, 8/Dec/2012
     rho.correctBoundaryConditions();
+    oversetFvPatchVectorField::oversetInterpolate(U); // Overset update
+    // Note: if implicit fringe is switched on, we are doing the interpolation
+    // twice (once in correctBoundaryConditions and once in oversetInterpolate)
+    // Reorganize. VV, 4/Oct/2016.
 }

@@ -26,20 +26,13 @@
         dimensionedScalar("pcorr", p.dimensions(), 0),
         pcorrTypes
     );
-    oversetFvPatchScalarField::setCoupledFringe(pcorr);
 
     // Initialise flux with interpolated velocity
     phi = faceOversetMask*(fvc::interpolate(U) & mesh.Sf());
 
     // Adjust overset fluxes
     oversetAdjustPhi(phi, U); // Fringe flux adjustment
-
-    if (pcorr.needReference())
-    {
-        fvc::makeRelative(phi, U);
-        globalOversetAdjustPhi(phi, U, pcorr); // Global flux adjustment
-        fvc::makeAbsolute(phi, U);
-    }
+    globalOversetAdjustPhi(phi, U, pcorr); // Global flux adjustment
 
     while (pimple.correctNonOrthogonal())
     {
@@ -47,6 +40,9 @@
         (
             fvm::laplacian(rAU, pcorr) == fvc::div(phi)
         );
+
+        // Adjust non-orthogonal fluxes if necessary
+        om.correctNonOrthoFluxes(pcorrEqn, U);
 
         pcorrEqn.setReference(pRefCell, pRefValue);
         pcorrEqn.solve();
