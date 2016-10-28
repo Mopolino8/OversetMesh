@@ -905,8 +905,11 @@ void oversetFvPatchField<Type>::initEvaluate
     //    fluxes.
     if (coupledFringe_ && !conservativeCorrection_)
     {
-        Info<< "Explicitly correcting fringe values for field: "
-            << this->dimensionedInternalField().name() << endl;
+        if (oversetMesh::debug)
+        {
+            Info<< "Explicitly correcting fringe values for field: "
+                << this->dimensionedInternalField().name() << endl;
+        }
 
         // Get non-constant access to internal field
         Field<Type>& psi = const_cast<Field<Type>&>(this->internalField());
