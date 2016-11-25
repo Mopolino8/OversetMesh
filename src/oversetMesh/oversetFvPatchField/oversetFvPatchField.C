@@ -974,7 +974,7 @@ void oversetFvPatchField<Type>::manipulateMatrix
         Field<Type> accValues =
             oversetPatch_.overset().interpolate(eqn.psi());
 
-        // Ger acceptor addressing
+        // Get acceptor addressing
         const labelList& accCells = oversetPatch_.overset().acceptorCells();
 
         eqn.setValues(accCells, accValues);
