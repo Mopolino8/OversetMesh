@@ -102,8 +102,8 @@ void emptyOversetFvPatchField<Type>::evaluate(const Pstream::commsTypes)
         this->updateCoeffs();
     }
 
-//    fvPatchField<Type>::operator==(this->patchInternalField());
-    fvPatchField<Type>::operator==(pTraits<Type>::zero);
+    // Note: acts as zero gradient boundary condition
+    fvPatchField<Type>::operator==(this->patchInternalField());
     fvPatchField<Type>::evaluate();
 }
 
