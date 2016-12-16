@@ -164,6 +164,10 @@ public:
             //- Return the matrix source coefficients corresponding to the
             //  evaluation of the gradient of this patchField
             virtual tmp<Field<Type> > gradientBoundaryCoeffs() const;
+
+
+        //- Write
+        virtual void write(Ostream&) const;
 };
 
 

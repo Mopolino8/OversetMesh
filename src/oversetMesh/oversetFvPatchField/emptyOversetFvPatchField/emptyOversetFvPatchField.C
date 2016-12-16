@@ -156,6 +156,14 @@ emptyOversetFvPatchField<Type>::gradientBoundaryCoeffs() const
 }
 
 
+template<class Type>
+void emptyOversetFvPatchField<Type>::write(Ostream& os) const
+{
+    fvPatchField<Type>::write(os);
+    this->writeEntry("value", os);
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
