@@ -180,7 +180,6 @@ bool Foam::oversetMesh::movePoints() const
 {
     // Perform appropriate updates on search and fringe
     // HJ, 3/Apr/2013
-    Info<< "Overset mesh motion update" << endl;
 
     // Get time index
     const label globalTimeIndex = mesh().time().timeIndex();
@@ -189,6 +188,8 @@ bool Foam::oversetMesh::movePoints() const
     // time index is smaller than global one
     if (curTimeIndex_ < globalTimeIndex)
     {
+        Info<< "Overset mesh motion update" << endl;
+
         forAll (regions_, regionI)
         {
             regions_[regionI].update();
