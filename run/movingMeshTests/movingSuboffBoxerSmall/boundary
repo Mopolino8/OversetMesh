@@ -1,0 +1,100 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "1/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+13
+(
+    oversetFaces
+    {
+        type            overset;
+        nFaces          0;
+        startFace       4769047;
+    }
+    x_min
+    {
+        type            wall;
+        nFaces          400;
+        startFace       4769047;
+    }
+    x_max
+    {
+        type            wall;
+        nFaces          990;
+        startFace       4769447;
+    }
+    y_min
+    {
+        type            wall;
+        nFaces          1460;
+        startFace       4770437;
+    }
+    y_max
+    {
+        type            wall;
+        nFaces          1460;
+        startFace       4771897;
+    }
+    z_min
+    {
+        type            wall;
+        nFaces          1460;
+        startFace       4773357;
+    }
+    z_max
+    {
+        type            wall;
+        nFaces          1460;
+        startFace       4774817;
+    }
+    hull
+    {
+        type            wall;
+        nFaces          52523;
+        startFace       4776277;
+    }
+    sailAll
+    {
+        type            wall;
+        nFaces          2041;
+        startFace       4828800;
+    }
+    sternFins
+    {
+        type            wall;
+        nFaces          3334;
+        startFace       4830841;
+    }
+    inlet
+    {
+        type            patch;
+        nFaces          1225;
+        startFace       4834175;
+    }
+    outlet
+    {
+        type            patch;
+        nFaces          1225;
+        startFace       4835400;
+    }
+    sides
+    {
+        type            patch;
+        nFaces          42000;
+        startFace       4836625;
+    }
+)
+
+// ************************************************************************* //

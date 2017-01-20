@@ -49,7 +49,7 @@ namespace donorSuitability
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class noSuitability Declaration
+                       Class noSuitability Declaration
 \*---------------------------------------------------------------------------*/
 
 class noSuitability

@@ -1,0 +1,104 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.1                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    oversetFaces
+    {
+        type            overset;
+        coupledFringe   false;
+        setHoleCellValue false;
+        holeCellValue   0;
+        value           nonuniform 0();
+    }
+    x_min
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    x_max
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    y_min
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    y_max
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    z_min
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    z_max
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    hull
+    {
+        type            nutWallFunction;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        value           uniform 0;
+    }
+    sailAll
+    {
+        type            nutWallFunction;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        value           uniform 0;
+    }
+    sternFins
+    {
+        type            nutWallFunction;
+        Cmu             0.09;
+        kappa           0.41;
+        E               9.8;
+        value           uniform 0;
+    }
+    inlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    outlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    sides
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+}
+
+
+// ************************************************************************* //

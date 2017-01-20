@@ -82,7 +82,8 @@ class donorSuitability
 
         //- Donor Suitability Function (DSF), a list of scalar fields for each
         //  processor. In case of serial run, it is a list with a single
-        //  entry. Each field is defined in cell centres and is used for overlap
+        //  entry.  Each field is defined in cell centres and is used
+        //  for overlap
         //  minimisation.
         List<scalarField> dsf_;
 

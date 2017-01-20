@@ -37,11 +37,6 @@ regions
             holes       "backHole";
             acceptors   "backFringe";
         }
-
-//         fringe
-//         {
-//             type overlap;
-//         }
     }
     suboff
     {

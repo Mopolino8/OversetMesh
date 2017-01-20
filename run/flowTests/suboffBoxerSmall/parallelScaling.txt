@@ -1,0 +1,23 @@
+SMALL suboff mesh, 1487665 cells, running on trinity
+
+potentialOversetFoam, complete run including I/O
+
+nProc      execution time [s]
+ 1         43.42
+ 2
+ 4         19.00
+ 8         12.05
+16         10.51
+32         12.55
+56         11.77
+
+simpleOversetFoam, time after 50 iterations including I/O
+
+nProc      execution time [s]
+ 1         590.59
+ 2
+ 4         209.81
+ 8         162.1 (1 node, all cores)
+16         151.55 (9 seconds per iteration)
+32         221 (52k cells per core)
+56         230.23 (26k cells per core)

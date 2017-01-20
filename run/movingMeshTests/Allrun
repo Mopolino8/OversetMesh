@@ -2,3 +2,4 @@
 
 ( cd movingCylinderInChannelicoDyMOversetFoam ; ./Allrun )
 ( cd movingCylinderInChannelpimpleDyMOversetFoam ; ./Allrun )
+( cd movingSuboffBoxerSmall ; ./Allrun )

@@ -58,6 +58,8 @@ int main(int argc, char *argv[])
 #   include "createOversetMasks.H"
 #   include "createFields.H"
 
+#   include "writeOversetMasks.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< nl << "Calculating potential flow" << endl;
